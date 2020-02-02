@@ -4,7 +4,7 @@ from json.decoder import JSONDecodeError as SolrError
 import os
 from time import sleep
 import requests
-from requests.exceptions import HTTPError
+from requests.exceptions import HTTPError, ConnectionError
 
 CONNECTIONS = {}
 SOLRHOST = os.environ.get('SOLRHOST', 'localhost')
@@ -114,8 +114,8 @@ def get_cores():
     this_status = this_data.get('status')
     return set(this_status.keys())
 
-def error_solr(this_response, this_schema):
-    """error_solr: parse response string for field type schema error"""
+def type_error_solr(this_response, this_schema):
+    """type_error_solr: parse dtype schema response for field name"""
     error_text = this_response['error']['msg']
     if 'Error adding field' in error_text:
         print(error_text)
@@ -126,7 +126,7 @@ def error_solr(this_response, this_schema):
         raise ValueError('Error: cannot post data "{}" to field "{}" type "{}"'\
                          .format(this_data, this_field, this_type))
 
-def post_data_api(data, name):
+def post_data(data, name):
     """post_data_api: post data using v1 Solr API"""
     return post_solr(json.dumps(data),
                      name,
@@ -258,8 +258,25 @@ def delete_collection(name, drop_schema=True):
 def ping_name(name, solr_mode='cores'):
     """ping_name: check if collection or core exists"""
     this_api = 'admin/ping' if solr_mode == 'cores' else 'admin/ping?distrib=true'
+    this_error = None
     try:
         this_data = get_solr(name, api=this_api)
-    except (HTTPError, SolrError, ConnectionError):
+    except (HTTPError, SolrError, ConnectionError) as error:
+        this_error = error
+    if isinstance(this_error, ConnectionError):
+        raise ConnectionError('Error: Solr is not running')
+    if this_error:
         return False
     return this_data.get('status') == 'OK'
+
+def get_solrmode():
+    this_error = None
+    try:
+        _ = get_collections()
+    except (ConnectionError, HTTPError) as error:
+        this_error = error
+    if isinstance(this_error, ConnectionError):
+        raise ConnectionError('Error: Solr is not running')
+    if isinstance(this_error, HTTPError):
+        return 'cores'
+    return 'collections'
