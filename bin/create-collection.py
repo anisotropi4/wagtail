@@ -12,7 +12,7 @@ import pandas as pd
 import pandas.api.types as pd_types
 import numpy as np
 
-from app.solr import create_collection, delete_collection, ping_collection, wait_for_success
+from app.solr import create_collection, delete_collection, ping_name, wait_for_success
 
 DEBUG = True
 FILENAME = 'output/node.jsonl'
@@ -63,10 +63,10 @@ for filename in FILENAMES:
     this_collection = re.split(r'[\._-]', filestub).pop(0)
     if CORE:
         this_collection = CORE
-    if DELETE and ping_collection(this_collection):
+    if DELETE and ping_name(this_collection, solr_mode='collections'):
         delete_collection(this_collection)        
-    if ping_collection(this_collection):
+    if ping_name(this_collection, solr_mode='collections'):
         sys.exit(0)
-    if not ping_collection(this_collection):
+    if not ping_name(this_collection, solr_mode='collections'):
         create_collection(this_collection)
     #this_schema = get_schema(this_collection)
