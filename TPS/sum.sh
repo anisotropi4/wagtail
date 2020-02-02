@@ -1,5 +1,5 @@
 #!/bin/sh
-for i in output/*.jsonl
+for i in data/*.jsonl
 do
     ID=$(basename ${i} | sed 's/.jsonl//')
     ../bin/count-documents.py ${ID}
