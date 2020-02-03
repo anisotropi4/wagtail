@@ -1,7 +1,7 @@
 # wagtail
 An approach to managing nested JSON data by flattening keys with an example implemention scripts in Solr and Python
 
-The examples are taken from British railway infrastructure Train Planning System (TPS) and Common Interface File (CIF) data sets
+The examples are taken from British railway infrastructure Train Planning System (TPS) and Working Timetable (WTT) Common Interface File (CIF) data sets
 
 ## Dependencies
 ### jq
@@ -35,7 +35,7 @@ $ cd TPS
 $ sh ../bin/create-cluster.sh
 $ ./run.sh
 
-## CIF
+## WTT
 From the `CIF` project directory
 $ cd CIF
 $ sh ../bin/create-cluster.sh
