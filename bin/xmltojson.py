@@ -63,7 +63,7 @@ def write_file(path, item):
     rtag = 'output'
     if path:
         (rtag, _) = path[-1]
-    print(rtag)
+    #print(rtag)
     outputfile = '{}{}.jsonl'.format(output_path, rtag)
     if rtag in filetags:
         fout = open(outputfile, 'a')
