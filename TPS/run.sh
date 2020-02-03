@@ -1,5 +1,6 @@
 #!/bin/sh
 
+export SOLRHOST=localhost
 export PYTHONUNBUFFERED=1
 export PATH=${PATH}:../bin
 
@@ -46,6 +47,7 @@ do
     fi
     if [ x${COUNT} = "x0" ]; then
         echo Posting ${FILE} to Solr ${ID}
-        < ${FILE} parallel -j 1 --files --pipe -l 65536 cat | parallel "post-simple.py {} --core ${ID} --seq {#} --rename-id; rm {}; sleep 1"
+        < ${FILE} parallel -j 1 --blocksize 128M --files --pipe -l 65536 cat | parallel "post-simple.py {} --core ${ID} --seq {#} --rename-id; rm {}; sleep 1"
     fi
 done
+
