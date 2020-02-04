@@ -82,6 +82,19 @@ def raw_query(name, search_str='*:*', sort='id asc', nrows=10, **rest):
     this_response = post_solr(data, name, api='select')
     return this_response
 
+
+def get_query(name, search_str='*:*', sort='id asc', limitrows=False, nrows=10, **rest):
+    """get_query: return Solr query data for `solr` connection"""
+    if not ping_name(name):
+        raise ValueError('"{}" is not a Solr collection or core'.format(name))
+    if limitrows:
+        this_response = raw_query(name, q=search_str, nrows=nrows, **rest)
+    else:
+        this_response = raw_query(name, q=search_str,
+                                  nrows=get_count(name), **rest)
+    this_data = this_response.pop('response')
+    return this_data['docs']
+
 def get_count(name, search_str='*:*', **rest):
     """get_count: return Solr document count for name"""
     if not ping_name(name):
@@ -94,19 +107,6 @@ def clean_query(this_object):
     """clean_query: remove `_version_` key"""
     this_object.pop('_version_', None)
     return this_object
-
-def get_query(solr, search_str, sort='id asc', limitrows=False, nrows=10, **rest):
-    """get_query: return Solr query data for `solr` connection"""
-    this_data = solr.search(q=search_str, sort=sort, start=0,
-                            rows=nrows, **rest)
-    output = [clean_query(i) for i in this_data]
-    if limitrows:
-        return output
-    for start in range(nrows, this_data.hits, 1024):
-        this_data = solr.search(q=search_str, sort=sort, start=start,
-                                rows=1024, **rest)
-        output += [clean_query(i) for i in this_data]
-    return output
 
 def get_cores():
     """get_cores: return a list of the Solr core names"""
