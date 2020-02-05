@@ -11,7 +11,6 @@ The reason for this framework is a sudden realisation in late December 2019 that
 ### Key flattening
 
 The approach chosen was to flattend nested keys to a "`.`" separated value. This maybe more clearly seen in the following two examples:
-
 ```javascript
 {
   "id": "64",
@@ -71,7 +70,7 @@ This approach is based on a customised version [flatten-dict](https://github.com
 
 ## Data sources and processing
 
-The example data are from the Network Rail [open-data](https://www.networkrail.co.uk/who-we-are/transparency-and-ethics/transparency/open-data-feeds/) Infrastructure and Schedule feeds. The Infrastructure model is a largely undocument [XML](https://www.w3.org/XML/) format whereas the Schedule is based on data distribured in the Common Interface File (CIF) End User Specification (Version 29)
+The example data are from the [Network Rail](https://www.networkrail.co.uk/) [open-data](https://www.networkrail.co.uk/who-we-are/transparency-and-ethics/transparency/open-data-feeds/) Infrastructure and Schedule feeds. The Infrastructure model is a largely undocument [XML](https://www.w3.org/XML/) format whereas the Schedule is based on data distribured in the Common Interface File (CIF) End User Specification (Version 29)
 
 Scripts to convert data from [HTML](https://en.wikipedia.org/wiki/HTML) and XML to JSON as well as manage and create Apache [Solr](https://lucene.apache.org/solr/) [docker](https://www.docker.com/) containers are provided
 
