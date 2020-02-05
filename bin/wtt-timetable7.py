@@ -2,7 +2,7 @@
 
 # requirement: a unique train for each given bitmap day and UID
 
-from app.solr import get_connection, raw_query
+import app.solr as solr
 import json
 import pandas as pd
 
@@ -24,9 +24,7 @@ if __name__ == '__main__':
 if DEBUG:
     pd.set_option('display.max_columns', None)
 
-solr = get_connection('PA')
-df1 = pd.DataFrame(raw_query(solr, nrows=False))
-
+df1 = pd.DataFrame(solr.get_query('PA'))
 df1 = df1.drop(['_version_', 'Transaction', 'STP', 'Dates', 'Origin', 'Terminus', 'Duration'], axis=1)
 df1 = df1.drop(df1[df1['ID'] != 'PA'].index).fillna(value={'Duration': '00:00:00'})
 

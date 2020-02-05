@@ -15,7 +15,7 @@ URL="https://networkrail.opendata.opentraintimes.com/mirror/schedule/cif/"
 
 echo Download CIF files
 echo Get file list
-if [ ! -f full-file-list.html ]; then
+if [ ! -f full-file-list.txt ]; then
     curl -s -L -G  ${URL} | \
     htmltojson.py --stdout --depth 3 | jq -cr '.tbody?[]? | .[].td[] | select(.a?.title?) | .a.title' > full-file-list.txt  
 fi
@@ -85,7 +85,7 @@ done
 
 echo Create PT-${DATESTRING}-7.jsonl timetable file
 if [ ! -f PT-${DATESTRING}-7.jsonl ]; then
-    < schedule/PA-${DATESTRING}.jsonl ./wtt-timetable7.py > PT-${DATESTRING}-7.jsonl
+    wtt-timetable7.py > PT-${DATESTRING}-7.jsonl
 fi
 echo Created PT-${DATESTRING}-7.jsonl timetable file
 
@@ -98,5 +98,5 @@ fi
 
 if [ x${COUNT} = "x0" ]; then
     echo Post ${ID} json files to Solr
-    cat PT-${DATESTRING}-7.jsonl | parallel --block 8M --pipe --cat ./solr/post.py --core ${ID} {}
+    cat PT-${DATESTRING}-7.jsonl | parallel --block 8M --pipe --cat post-simple.py --core ${ID} {}
 fi

@@ -136,7 +136,7 @@ def create_collection(this_core):
     try:
         solr.create_collection(this_core)
     except solr.HTTPError:
-        print('211: {}'.format(filename))
+        print('139: {}'.format(filename))
 
 def rename_id(this_df):
     this_id = this_core + '.id'
@@ -180,7 +180,7 @@ for filename in FILENAMES:
         try:
             solr.set_schema(this_core, SOLRMODE, update)
         except solr.HTTPError as error:
-            print('237: {}'.format(filename))
+            print('183: {}'.format(filename))
             pass
     solr.wait_for_success(wait_for_schema, ConnectionError, this_core, new_schema)
     if update:
