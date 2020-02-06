@@ -89,9 +89,7 @@ Apache [Zookeeper](https://zookeeper.apache.org/) is an open-source distributed 
 
 ### docker Apache Solr and zookeeper images
 
-The offical docker Apache Solr hub configuration is maintained [here](https://github.com/docker-solr/docker-solr)
-
-The offical docker Apache Solr hub configuration is maintained [here](https://github.com/31z4/zookeeper-docker)
+The offical docker Apache Solr hub configuration is maintained [here](https://github.com/docker-solr/docker-solr) and Apache zooker hub configuration is maintained [here](https://github.com/31z4/zookeeper-docker)
 
 ## Pre-requisites
 
