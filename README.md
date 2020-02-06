@@ -1,8 +1,6 @@
-# wagtail
+# **wagtail**
 
-An approach to managing nested JSON data by flattening keys with an example implemention scripts in Apache Solr and Python
-
-The examples are taken from British railway infrastructure Train Planning System (TPS) and Common Interface File (CIF) data sets
+An approach to managing nested JSON data by flattening keys with an example implemention scripts in Apache [Solr](https://lucene.apache.org/solr/) and [python](https://www.python.org/). The examples are taken from British railway infrastructure Train Planning System (TPS) and Common Interface File (CIF) data sets
 
 ## Background
 
@@ -10,7 +8,7 @@ The reason for this framework is a sudden realisation in late December 2019 that
 
 ### Key flattening
 
-The approach chosen was to flattend nested keys to a "`.`" separated value. This maybe more clearly seen in the following two examples:
+The approach chosen was to flattend nested keys to a "`.`" separated value. This maybe more clearly seen in the following two examples
 ```javascript
 {
   "id": "64",
@@ -29,7 +27,7 @@ The approach chosen was to flattend nested keys to a "`.`" separated value. This
   }
 }
 ```
-When transformed becomes:
+When transformed becomes
 ```javascript
 {
   "edge.id":"64",
@@ -41,7 +39,7 @@ When transformed becomes:
 }
 ```
 
-Nested array block are transformed into separate arrays but where index order is maintained as follows:
+Nested array block are transformed into separate arrays but where index order is maintained as follows
 ```javascript
 {
   "blockid": "946",
@@ -55,7 +53,7 @@ Nested array block are transformed into separate arrays but where index order is
   }
 }
 ```
-When transformed becomes:
+When transformed becomes
 ```javascript
 {
   "blockid": "946",
@@ -66,52 +64,78 @@ When transformed becomes:
 }
 ```
 
-This approach is based on a customised version [flatten-dict](https://github.com/ianlini/flatten-dict) package implemented in [python](https://www.python.org/)
+This implementation is based on a rewrite of the [flatten-dict](https://github.com/ianlini/flatten-dict) python package
 
 ## Data sources and processing
 
 The example data are from the [Network Rail](https://www.networkrail.co.uk/) [open-data](https://www.networkrail.co.uk/who-we-are/transparency-and-ethics/transparency/open-data-feeds/) Infrastructure and Schedule feeds. The Infrastructure model is a largely undocument [XML](https://www.w3.org/XML/) format whereas the Schedule is based on data distribured in the Common Interface File (CIF) End User Specification (Version 29)
 
-Scripts to convert data from [HTML](https://en.wikipedia.org/wiki/HTML) and XML to JSON as well as manage and create Apache [Solr](https://lucene.apache.org/solr/) [docker](https://www.docker.com/) containers are provided
+Scripts to convert data from [HTML](https://en.wikipedia.org/wiki/HTML) and XML to JSON as well as manage and create Apache Solr [docker](https://www.docker.com/) containers are provided
 
 License information for this data is given at the bottom of this document
 
-## Software components
+## Software Components
 
+The framework is built using [dash](http://gondor.apana.org.au/~herbert/dash/) (Debian Almquist shell) scripts and python to download, extract, transform and load data into a Apache Solr and zookeeper docker cluster 
 
+Using a combined Solr and Zookeeper [yaml](https://yaml.org/) configuration with the [docker-compose](https://docs.docker.com/compose/) python library, the Apache Solr and zooker container cluser installations is based use docker Solr [image](https://hub.docker.com/_/solr/) and [zookeeper](https://hub.docker.com/_/zookeeper) images
 
 ### Apache Solr
 
-Apache [Solr](https://lucene.apache.org/solr/) is an open-source `#NoSQL` search system based on Apache [Lucene](https://lucene.apache.org/). Solr provides distributed indexing, replication and load-balanced of queries, automated failover and recovery, centralized configuration. 
+Apache [Solr](https://lucene.apache.org/solr/) is an open-source `#NoSQL` search system based on Apache [Lucene](https://lucene.apache.org/). Solr provides distributed indexing, replication and load-balanced of queries, automated failover and recovery, centralized configuration
 
 ### Apache Zookeeper
-Apache [Zookeeper](https://zookeeper.apache.org/) is an open-source distributed management system that uses a hierarchical key-value store to provide a distributed configuration system service.
+Apache [Zookeeper](https://zookeeper.apache.org/) is an open-source distributed management system that uses a hierarchical key-value store to provide a distributed configuration system service
+
+### docker Apache Solr and zookeeper images
+
+The offical docker Apache Solr hub configuration is maintained [here](https://github.com/docker-solr/docker-solr)
+
+The offical docker Apache Solr hub configuration is maintained [here](https://github.com/31z4/zookeeper-docker)
+
+## Pre-requisites
+
+To extract and process the data requires the following software
 
 ### docker
 
-[docker](https://www.docker.com/) is a platform as a service (PaaS) that use OS-level virtualization to deliver container based application and configuration.
+Docker is a platform as a service (PaaS) software that use OS-level virtualization to deliver container based application and configuration. The Apache Solr and Zookeeper installation aer based on [docker](https://www.docker.com/) container images 
 
-This installation guide is based on Docker installation notes on [debian](https://docs.docker.com/install/linux/docker-ce/debian/) or Mint and/or [ubuntu](https://docs.docker.com/install/linux/docker-ce/ubuntu/)
+The Docker installation guide for Debian Linux is [here](https://docs.docker.com/install/linux/docker-ce/debian/) or Mint/Ubuntu [here](https://docs.docker.com/install/linux/docker-ce/ubuntu/)
 
-## Dependencies
 ### jq
-[jq](https://stedolan.github.io/jq/)
+
+The [jq](https://stedolan.github.io/jq/) JSON script tool is used in the to filter, map and transform structured data on the command line. To install `jq` on a Debian based Linux type
+```console
+    $ sudo apt-get install jq
+```
 
 ### parallel
-GNU [parallel](https://www.gnu.org/software/parallel/)
 
-### docker solr
-[docker](https://www.docker.com/)
-
-[docker-solr](https://github.com/docker-solr/docker-solr)
-
-### python modules
-
-
+GNU [parallel](https://www.gnu.org/software/parallel/) is used to speed the processing and upload of data to Solr. To install `parallel` on a Debian based Linux type
 ```console
-$ virtualenv venv
-$ source venv/bin/activate
-$ pip install docker-compose pandas lxml xmltodict
+    $ sudo apt-get install parallel
+```
+
+### cURL
+
+The [cURL](http://curl.haxx.se) command line tool is used to download HTML and data. To install `curl` on a Debian based Linux type
+```console
+    $ sudo apt-get install curl
+```
+
+## python modules
+
+The `docker-compose`, `pandas`, `lxml` and `xmltodict` are used to manage docker container configuration and to process data. To manage [python](https://www.python.org/) module installation and dependencies create and active a python virtual environment in the `wagtail` directory type
+```console
+    $ virtualenv venv
+    $ source venv/bin/activate
+    $ pip install docker-compose pandas lxml xmltodict
+```
+
+To exit the virtual environment type
+```console
+    $ deactivate
 ```
 
 ### docker-compose
