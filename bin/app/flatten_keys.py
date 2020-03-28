@@ -1,5 +1,4 @@
-"""flatten_keys: A package to modify (flatten and revert) keys for use with
-NoSQL JSON indexing
+"""flatten_keys: A package to flatten keys for use with NoSQL JSON indexing
 
 This is based on the python flatten-dict package modified
 (https://github.com/ianlini/flatten-dict)
