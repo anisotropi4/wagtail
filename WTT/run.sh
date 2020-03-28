@@ -85,7 +85,7 @@ done
 
 echo Create PT-${DATESTRING}-7.jsonl timetable file
 if [ ! -f PT-${DATESTRING}-7.jsonl ]; then
-    wtt-timetable7.py > PT-${DATESTRING}-7.jsonl
+    ./wtt-timetable7.py > PT-${DATESTRING}-7.jsonl
 fi
 echo Created PT-${DATESTRING}-7.jsonl timetable file
 
