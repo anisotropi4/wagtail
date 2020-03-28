@@ -68,7 +68,7 @@ This implementation is based on a rewrite of the [flatten-dict](https://github.c
 
 ## Data sources and processing
 
-The example data are from the [Network Rail](https://www.networkrail.co.uk/) [open-data](https://www.networkrail.co.uk/who-we-are/transparency-and-ethics/transparency/open-data-feeds/) Infrastructure and Schedule feeds. The Infrastructure model is a largely undocument [XML](https://www.w3.org/XML/) format whereas the Schedule is based on data distribured in the Common Interface File (CIF) End User Specification (Version 29)
+The example data are from the [Network Rail](https://www.networkrail.co.uk/) [open-data](https://www.networkrail.co.uk/who-we-are/transparency-and-ethics/transparency/open-data-feeds/) Infrastructure and Schedule feeds. The Infrastructure model is a largely undocument [XML](https://www.w3.org/XML/) format whereas the Schedule is based on data distribured in the Common Interface File (CIF) End User Specification (Version 29) [here](https://groups.google.com/group/openraildata-talk/attach/3dfabc02db84a/CIF%20USER%20SPEC%20v29%20FINAL.pdf)
 
 Scripts to convert data from [HTML](https://en.wikipedia.org/wiki/HTML) and XML to JSON as well as manage and create Apache Solr [docker](https://www.docker.com/) containers are provided
 
