@@ -6,7 +6,7 @@ This is based on the python flatten-dict package modified
 
 from collections.abc import Mapping
 
-def flatten(this_dict):
+def flatten(this_dict, sep='.'):
     """Flatten `Mapping` object to a flatten . (dot) separated nested-keys
     to produce a depth-one key dict
 
@@ -25,7 +25,7 @@ list {}'.format(type(this_dict), flatten_types))
 
     out_dict = {}
 
-    def _reducer(key_1, key_2, sep='.'):
+    def _reducer(key_1, key_2):
         if isinstance(key_2, tuple):
             return key_1
         if not key_1:
