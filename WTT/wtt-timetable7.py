@@ -25,7 +25,7 @@ if DEBUG:
     pd.set_option('display.max_columns', None)
 
 df1 = pd.DataFrame(solr.get_query('PA'))
-df1 = df1.drop(['_version_', 'Transaction', 'STP', 'Dates', 'Origin', 'Terminus', 'Duration'], axis=1)
+df1 = df1.drop(['_version_', 'Transaction', 'Dates', 'Origin', 'Terminus', 'Duration'], axis=1)
 df1 = df1.drop(df1[df1['ID'] != 'PA'].index).fillna(value={'Duration': '00:00:00'})
 
 df1['ID'] = 'PT'

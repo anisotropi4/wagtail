@@ -4,12 +4,16 @@ export SOLRHOST=localhost
 export PYTHONUNBUFFERED=1
 export PATH=${PATH}:../bin
 
-for DIRECTORY in data schedule storage
+for DIRECTORY in data schedule storage app
 do
     if [ ! -d ${DIRECTORY} ]; then
         mkdir ${DIRECTORY}
     fi
 done
+
+if [ ! -f app/solr.py ]; then
+    ln ../bin/app/solr.py app/solr.py
+fi
 
 URL="https://networkrail.opendata.opentraintimes.com/mirror/schedule/cif/"
 
