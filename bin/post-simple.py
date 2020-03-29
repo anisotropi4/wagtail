@@ -8,7 +8,6 @@ import argparse
 import os.path as path
 from os import getcwd
 import pandas as pd
-from pandas.api.types import infer_dtype, is_datetime64_any_dtype, is_list_like
 import numpy as np
 from app.flatten_keys import flatten
 import warnings
@@ -80,7 +79,7 @@ def post_chunk(this_df):
     this_header = this_response.pop('responseHeader')
     print({**{'filename': filename}, **this_header})
     if this_header.get('status') != 0:
-        error_solr(this_response, this_schema)
+        solr.HTTPError(this_response, this_schema)
     return this_header.get('status') == 0
 
 def post_data(this_df, m=1048576):
