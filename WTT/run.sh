@@ -91,7 +91,8 @@ do
         COUNT=0
     fi
     if [ x${COUNT} = "x0" ]; then
-        ls storage/${ID}_???.jsonl | parallel post-simple.py {} --core ${ID}
+        #ls storage/${ID}_???.jsonl | parallel post-simple.py {} --core ${ID}
+        ls storage/${ID}_???.jsonl | parallel post-types.py {} --core ${ID}
     fi
 done
 
@@ -110,5 +111,6 @@ fi
 
 if [ x${COUNT} = "x0" ]; then
     echo Post ${ID} json files to Solr
-    cat PT-${DATESTRING}-7.jsonl | parallel --block 8M --pipe --cat post-simple.py --core ${ID} {}
+    #cat PT-${DATESTRING}-7.jsonl | parallel --block 8M --pipe --cat post-simple.py --core ${ID} {}
+    cat PT-${DATESTRING}-7.jsonl | parallel --block 8M --pipe --cat post-types.py --core ${ID} {}
 fi
