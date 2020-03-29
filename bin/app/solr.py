@@ -168,7 +168,7 @@ def get_schema(name, solr_mode='collections', all_fields=False):
     return [i for i in this_data['fields'] if usr_dtype(i['name']) and not i.get('required')]
 
 
-def solr_field(name=None, type='string', multiValued=False, stored=True):
+def solr_field(name=None, type='string', multiValued=False, stored=True, docValues=False):
     """solr_field: convert python dict structure to Solr field structure
     """
     if not name:
@@ -177,7 +177,8 @@ def solr_field(name=None, type='string', multiValued=False, stored=True):
     lookup_bool = {True: 'true', False: 'false'}
     return {'name': name, 'type': type,
             'multiValued': lookup_bool[multiValued],
-            'stored': lookup_bool[stored]}
+            'stored': lookup_bool[stored],
+            'docValues': lookup_bool[docValues]}
 
 def set_schema(name, solr_mode='collections', *v):
     """set_schema: add or replace the Solr schema for name from list of dict
