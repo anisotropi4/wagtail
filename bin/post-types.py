@@ -8,7 +8,7 @@ import argparse
 import os.path as path
 from os import getcwd
 import pandas as pd
-from pandas.api.types import is_list_like, DatetimeTZDtype as dt_type
+from pandas.api.types import is_list_like
 import numpy as np
 from app.flatten_keys import flatten
 import warnings
@@ -75,7 +75,7 @@ def is_zeropadded(this_series):
     return (this_series.str[0] == '0').any()
         
 def get_fieldtypes(this_df):
-    lookup_types = {dt_type: 'pdate',
+    lookup_types = {np.datetime64: 'pdate',
                     int: 'pint',
                     float: 'pdouble',
                     object: 'string'}
@@ -106,7 +106,7 @@ def get_df(filename, chunksize=None, dtype=None):
     return pd.read_json(filename, lines=True, dtype=dtype, convert_dates=[])
 
 def clean_json(this_df):
-    return [{k: v for k, v in m.items() if isinstance(v, list) or pd.notnull(v)} for m in this_df]
+    return [{k: v for k, v in m.items() if isinstance(v, list) or v != ''} for m in this_df]
 
 def post_chunk(this_df):
     data = clean_json(this_df.to_dict(orient='records'))
@@ -206,6 +206,7 @@ for filename in FILENAMES:
         df1 = rename_id(df1)
     if RENAMEID or 'id' not in keys:
         df1['id'] = set_id(df1)
+    df1 = df1.fillna('')
     this_schema = solr.get_schema(this_core, SOLRMODE)
     new_schema = get_new_schema(this_core, df1)
     update = get_update(this_core, new_schema)
