@@ -66,6 +66,14 @@ echo Converted timetable-${DATESTRING} CIF files to jsonl
 count-documents.py _test_ 2> /dev/null
 if [ "$?" != "0" ]; then
     start-cluster.sh
+    if [ "$?" != "0" ]; then
+        echo ERROR run.sh: unable to start Solr docker cluster
+        echo
+        echo NOTE: in the wagtail root directory to activate python virtual environment:
+        echo $ source venv/bin/activate
+        echo 
+        exit 2
+    fi
     while true
     do
         count-documents.py _test_ 2> /dev/null
