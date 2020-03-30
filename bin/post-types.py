@@ -22,8 +22,15 @@ BITMAP = True
 SEQ = None
 DEFAULTTYPE = 'text_general'
 DEFAULTFIELDS = None
+CWD = getcwd()
+DEBUG = False
 
-DEBUG = True
+try:
+    from debug import FILENAMES, RENAMEID, CWD
+    DEBUG = True
+except ModuleNotFoundError:
+    pass
+
 if __name__ == '__main__':
     warnings.simplefilter(action='ignore', category=FutureWarning)
 
@@ -45,15 +52,9 @@ if __name__ == '__main__':
     CORE = ARGS.core
     RENAMEID = ARGS.rename
     SEQ = ARGS.seq
-    DEBUG = False
-
-CWD = getcwd()
-
-if DEBUG:
-    try:
-        from debug import FILENAMES, RENAMEID, CWD
-    except ModuleNotFoundError:
-        pass
+    if DEBUG:
+        print('ERROR post-types.py: running command line in debug mode')
+        2.1/0
 
 def get_nested_columns(this_df):
     return set(c for c in df1.columns
@@ -73,7 +74,14 @@ def is_zeropadded(this_series):
     if n.pop() < 2:
         return False
     return (this_series.str[0] == '0').any()
-        
+
+def is_solrdt(this_series):
+    try:
+        pd.to_datetime(this_series, format='%Y-%m-%dT%H:%M:%SZ')
+        return True
+    except ValueError:
+        return False
+
 def get_fieldtypes(this_df):
     lookup_types = {np.datetime64: 'pdate',
                     int: 'pint',
@@ -84,6 +92,9 @@ def get_fieldtypes(this_df):
         for t, v in lookup_types.items():
             if get_seriestype(this_df[c], t):
                 if t == int and is_zeropadded(this_df[c]):
+                    field_types[c] = 'string'
+                    break
+                if t == np.datetime64 and not is_solrdt(this_df[c]):
                     field_types[c] = 'string'
                     break
                 field_types[c] = v
