@@ -76,22 +76,18 @@ def post_solr(data, name='', api='', response_header=False, hostname=SOLRHOST):
 
 def raw_query(name, search_str='*:*', sort='id asc', nrows=10, **rest):
     """raw_query: return Solr raw query data for a connection"""
-    data = {'q': search_str, 'sort': sort, 'rows': nrows}
+    data = {'q': search_str, 'sort': sort, 'rows': nrows, 'indent': 'off'}
     if rest:
         data = {**data, **rest}
     this_response = post_solr(data, name, api='select')
     return this_response
 
-
 def get_query(name, search_str='*:*', sort='id asc', limitrows=False, nrows=10, **rest):
     """get_query: return Solr query data for `solr` connection"""
     if not ping_name(name):
         raise ValueError('"{}" is not a Solr collection or core'.format(name))
-    if limitrows:
-        this_response = raw_query(name, q=search_str, nrows=nrows, **rest)
-    else:
-        this_response = raw_query(name, q=search_str,
-                                  nrows=get_count(name), **rest)
+    nrows = nrows if limitrows else get_count(name)
+    this_response = raw_query(name, q=search_str, nrows=nrows, **rest)
     this_data = this_response.pop('response')
     return this_data['docs']
 
