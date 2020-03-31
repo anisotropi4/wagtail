@@ -25,6 +25,7 @@ filename = 'output/AA_003'
 filename = 'output/HD_001'
 filename = 'output/TR_002'
 filename = 'output/PATH_004'
+filename = 'output/PATH_030'
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Process trains services \
@@ -309,11 +310,12 @@ PA = PA.join(df2)
 df2 = WTT.loc[lt_idx, ['Schedule', 'Offset', 'UUID']].set_index('UUID').rename(columns={'Schedule': 'Terminus', 'Offset': 'Duration'})
 PA = PA.join(df2)
 
-df2 = WTT.loc[lt_idx, ['Schedule', 'Offset', 'UUID']].set_index('UUID')
-df2 = ((pd.to_timedelta(df2['Schedule']) + pd.to_timedelta(df2['Offset'])) / DAY).apply(np.ceil).astype(int).astype(str)
-df2.name = 'Op Days'
-PA = PA.join(df2).reset_index().fillna(value={'Op Days': '0'}).fillna('')
-PA['Dates'] += '.' + PA['Op Days']
+df2 = WTT.loc[lo_idx, ['Schedule', 'UUID']].set_index('UUID')
+df2 = df2.join(WTT.loc[lt_idx, ['Offset', 'UUID']].set_index('UUID'))
+df3 = ((pd.to_timedelta(df2['Schedule']) + pd.to_timedelta(df2['Offset'])) / DAY).apply(np.ceil).astype(int).astype(str)
+df3.name = 'Op_Days'
+PA = PA.join(df3).reset_index().fillna(value={'Op_Days': '0'}).fillna('')
+PA['Dates'] += '.' + PA['Op_Days']
 
 BS = bs_record(SA[SA['ID'] == 'BS'])
 BX = bx_record(SA[SA['ID'] == 'BX'])
