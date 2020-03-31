@@ -8,7 +8,7 @@ import argparse
 import os.path as path
 from os import getcwd
 import pandas as pd
-from pandas.api.types import is_list_like, DatetimeTZDtype as dt_type
+from pandas.api.types import is_list_like
 import numpy as np
 from app.flatten_keys import flatten
 import warnings
@@ -22,8 +22,15 @@ BITMAP = True
 SEQ = None
 DEFAULTTYPE = 'text_general'
 DEFAULTFIELDS = None
+CWD = getcwd()
+DEBUG = False
 
-DEBUG = True
+try:
+    from debug import FILENAMES, RENAMEID, CWD
+    DEBUG = True
+except ModuleNotFoundError:
+    pass
+
 if __name__ == '__main__':
     warnings.simplefilter(action='ignore', category=FutureWarning)
 
@@ -45,15 +52,9 @@ if __name__ == '__main__':
     CORE = ARGS.core
     RENAMEID = ARGS.rename
     SEQ = ARGS.seq
-    DEBUG = False
-
-CWD = getcwd()
-
-if DEBUG:
-    try:
-        from debug import FILENAMES, RENAMEID, CWD
-    except ModuleNotFoundError:
-        pass
+    if DEBUG:
+        print('ERROR post-types.py: running command line in debug mode')
+        2.1/0
 
 def get_nested_columns(this_df):
     return set(c for c in df1.columns
@@ -73,9 +74,16 @@ def is_zeropadded(this_series):
     if n.pop() < 2:
         return False
     return (this_series.str[0] == '0').any()
-        
+
+def is_solrdt(this_series):
+    try:
+        pd.to_datetime(this_series, format='%Y-%m-%dT%H:%M:%SZ')
+        return True
+    except ValueError:
+        return False
+
 def get_fieldtypes(this_df):
-    lookup_types = {dt_type: 'pdate',
+    lookup_types = {np.datetime64: 'pdate',
                     int: 'pint',
                     float: 'pdouble',
                     object: 'string'}
@@ -84,6 +92,9 @@ def get_fieldtypes(this_df):
         for t, v in lookup_types.items():
             if get_seriestype(this_df[c], t):
                 if t == int and is_zeropadded(this_df[c]):
+                    field_types[c] = 'string'
+                    break
+                if t == np.datetime64 and not is_solrdt(this_df[c]):
                     field_types[c] = 'string'
                     break
                 field_types[c] = v
@@ -106,7 +117,7 @@ def get_df(filename, chunksize=None, dtype=None):
     return pd.read_json(filename, lines=True, dtype=dtype, convert_dates=[])
 
 def clean_json(this_df):
-    return [{k: v for k, v in m.items() if isinstance(v, list) or pd.notnull(v)} for m in this_df]
+    return [{k: v for k, v in m.items() if isinstance(v, list) or v != ''} for m in this_df]
 
 def post_chunk(this_df):
     data = clean_json(this_df.to_dict(orient='records'))
@@ -206,6 +217,7 @@ for filename in FILENAMES:
         df1 = rename_id(df1)
     if RENAMEID or 'id' not in keys:
         df1['id'] = set_id(df1)
+    df1 = df1.fillna('')
     this_schema = solr.get_schema(this_core, SOLRMODE)
     new_schema = get_new_schema(this_core, df1)
     update = get_update(this_core, new_schema)
