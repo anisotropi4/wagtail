@@ -51,7 +51,7 @@ df1 = df1.drop(['Date_From', 'Date_To'], axis=1)
 df1['Actual'] = df1['Days']
 
 def output_schedule(this_schedule):
-    this_schedule['Active'] = this_schedule['Start_Date'].dt.strftime('%Y-%m-%d')  + '.' + this_schedule['End_Date'].dt.strftime('%Y-%m-%d') + '.' + this_schedule['Actual'] + '.' + this_schedule['Op_Days']
+    this_schedule['Active'] = this_schedule['Start_Date'].dt.strftime('%Y-%m-%d')  + '.' + this_schedule['End_Date'].dt.strftime('%Y-%m-%d') + '.' + this_schedule['Actual'] + '.' + this_schedule['Op_Days'].astype(str)
 
     this_schedule['id'] = this_schedule['id'] + '.' + this_schedule.groupby('id').cumcount().apply(str)
     for KEY in ['Start_Date', 'End_Date']:
