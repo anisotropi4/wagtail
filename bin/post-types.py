@@ -8,7 +8,7 @@ import argparse
 import os.path as path
 from os import getcwd
 import pandas as pd
-from pandas.api.types import is_list_like
+from pandas.api.types import is_list_like, is_integer_dtype
 import numpy as np
 from app.flatten_keys import flatten
 import warnings
@@ -53,8 +53,8 @@ if __name__ == '__main__':
     RENAMEID = ARGS.rename
     SEQ = ARGS.seq
     if DEBUG:
-        print('ERROR post-types.py: running command line in debug mode')
-        2.1/0
+        raise RuntimeError(('ERROR post-types.py: running command line '
+                            'in debug mode'))
 
 def get_nested_columns(this_df):
     return set(c for c in df1.columns
@@ -67,13 +67,16 @@ def get_seriestype(this_series, this_type):
     except (ValueError, TypeError):
         return None
 
-def is_zeropadded(this_series):
+def is_zerospcpadded(this_series):
+    if is_integer_dtype(this_series):
+        return False
     n = set(this_series.str.len())
     if len(n) > 1:
         return False
     if n.pop() < 2:
         return False
-    return (this_series.str[0] == '0').any()
+    r = this_series.str[0]
+    return ((r == '0') | (r == ' ')).any()
 
 def is_solrdt(this_series):
     try:
@@ -91,7 +94,7 @@ def get_fieldtypes(this_df):
     for c in this_df.columns:
         for t, v in lookup_types.items():
             if get_seriestype(this_df[c], t):
-                if t == int and is_zeropadded(this_df[c]):
+                if t == int and is_zerospcpadded(this_df[c]):
                     field_types[c] = 'string'
                     break
                 if t == np.datetime64 and not is_solrdt(this_df[c]):
