@@ -22,8 +22,15 @@ BITMAP = True
 SEQ = None
 DEFAULTTYPE = 'text_general'
 DEFAULTFIELDS = None
+CWD = getcwd()
+DEBUG = False
 
-DEBUG = True
+try:
+    from debug import FILENAMES, RENAMEID, CWD
+    DEBUG = True
+except ModuleNotFoundError:
+    pass
+
 if __name__ == '__main__':
     warnings.simplefilter(action='ignore', category=FutureWarning)
 
@@ -45,15 +52,9 @@ if __name__ == '__main__':
     CORE = ARGS.core
     RENAMEID = ARGS.rename
     SEQ = ARGS.seq
-    DEBUG = False
-
-CWD = getcwd()
-
-if DEBUG:
-    try:
-        from debug import FILENAMES, RENAMEID, CWD
-    except ModuleNotFoundError:
-        pass
+    if DEBUG:
+        raise RuntimeError(('ERROR post-simple.py: running command line '
+                            'in debug mode'))
 
 def get_nested_columns(this_df):
     return set(c for c in df1.columns
