@@ -10,7 +10,6 @@ from os import getcwd
 import pandas as pd
 from pandas.api.types import is_list_like
 import numpy as np
-from pandas.api.types import is_list_like
 from app.flatten_keys import flatten
 import warnings
 import app.solr as solr
