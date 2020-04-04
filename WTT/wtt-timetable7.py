@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# requirement: a unique train for each given bitmap day and UID
+# requirement: a unique train path for each given bitmap day and UID
 
 import app.solr as solr
 import json
@@ -23,16 +23,12 @@ if __name__ == '__main__':
 
 if DEBUG:
     pd.set_option('display.max_columns', None)
-
-df1 = pd.DataFrame(solr.get_query('PA'))
-df1 = df1.drop(['_version_', 'Transaction', 'Dates', 'Origin', 'Terminus', 'Duration'], axis=1)
+df1 = pd.DataFrame(solr.get_query('PA', fl='UUID,ID,UID,Date_From,Date_To,Days,STP,Transaction,id,Op_Days'))
 df1 = df1.drop(df1[df1['ID'] != 'PA'].index).fillna(value={'Duration': '00:00:00'})
 
 df1['ID'] = 'PT'
 for KEY in ['Date_From', 'Date_To']:
     df1[KEY] = pd.to_datetime(df1[KEY])
-
-#df1 = df1.drop_duplicates(subset=['UID', 'Dates', 'Origin', 'Duration'], keep='last')
 
 df2 = df1[['Date_From', 'Date_To']].rename(columns={'Date_From': 'Start_Date', 'Date_To': 'End_Date'})
 idx2 = df2['End_Date'].isnull()
@@ -57,6 +53,9 @@ def output_schedule(this_schedule):
     for KEY in ['Start_Date', 'End_Date']:
         this_schedule[KEY] = this_schedule[KEY].dt.strftime('%Y-%m-%dT%H:%M:%SZ')
     this_schedule = this_schedule.fillna(value={'Origin': '', 'Terminus': ''})
+    df1 = this_schedule['Actual'].apply(lambda s: {'{}'.format(str(k)): v for k, v in enumerate(list(s))})
+    df2 = pd.DataFrame(df1.to_list(), index=df1.index)
+    this_schedule = this_schedule.join(df2)
     this_data = [json.dumps({k: v for k, v in path.to_dict().items() if v}) for _, path in this_schedule.iterrows()]
     print('\n'.join(this_data))
 
@@ -121,5 +120,4 @@ for UID in df2.index.unique():
     UPDATE += interleave(this_schedule)
 
 SCHEDULE = pd.DataFrame(UPDATE)
-
 output_schedule(SCHEDULE)

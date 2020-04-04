@@ -1,6 +1,7 @@
 #!/bin/sh 
 
 export SOLRHOST=localhost
+export SOLRHOST=joseph
 export PYTHONUNBUFFERED=1
 export PATH=${PATH}:../bin
 
@@ -11,7 +12,7 @@ do
     fi
 done
 
-if [ ! -f app/solr.py ]; then
+if [ ! -s app/solr.py ]; then
     ln ../bin/app/solr.py app/solr.py
 fi
 
@@ -19,13 +20,13 @@ URL="https://networkrail.opendata.opentraintimes.com/mirror/schedule/cif/"
 
 echo Download CIF files
 echo Get file list
-if [ ! -f full-file-list.txt ]; then
+if [ ! -s full-file-list.txt ]; then
     curl -s -L -G  ${URL} | \
     htmltojson.py --stdout --depth 3 | jq -cr '.tbody?[]? | .[].td[] | select(.a?.title?) | .a.title' > full-file-list.txt  
 fi
 
 LINE=$(fgrep -n _full.gz full-file-list.txt | tail -1)
-if [ ! -f file-list.txt ]; then
+if [ ! -s file-list.txt ]; then
     N=$(echo ${LINE} | cut -d':' -f1)
     tail -n +${N} full-file-list.txt > file-list.txt
 fi
@@ -33,7 +34,7 @@ fi
 for FILENAME in $(cat file-list.txt | sed 's/.gz$//')
 do
     echo Process ${FILENAME} CIF file
-    if [ ! -f data/${FILENAME} ]; then
+    if [ ! -s data/${FILENAME} ]; then
         echo Download ${FILENAME} CIF file
         curl -o data/${FILENAME}.gz ${URL}/${FILENAME}.gz
         gzip -d data/${FILENAME}.gz
@@ -45,7 +46,7 @@ echo ${DATESTRING}
 
 echo Create timetable for ${DATESTRING}
 echo Split CIF files
-if [ ! -f output/HD_001 ]; then
+if [ ! -s output/HD_001 ]; then
     if [ -d output ]; then
         rm -rf output
     fi
@@ -96,7 +97,7 @@ do
 done
 
 echo Create PT-${DATESTRING}-7.jsonl timetable file
-if [ ! -f PT-${DATESTRING}-7.jsonl ]; then
+if [ ! -s PT-${DATESTRING}-7.jsonl ]; then
     ./wtt-timetable7.py > PT-${DATESTRING}-7.jsonl
 fi
 echo Created PT-${DATESTRING}-7.jsonl timetable file
