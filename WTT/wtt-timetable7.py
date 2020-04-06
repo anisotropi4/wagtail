@@ -23,8 +23,7 @@ if __name__ == '__main__':
 
 if DEBUG:
     pd.set_option('display.max_columns', None)
-df1 = pd.DataFrame(solr.get_query('PA', fl='UUID,ID,UID,Date_From,Date_To,Days,STP,Transaction,id,Op_Days'))
-df1 = df1.drop(df1[df1['ID'] != 'PA'].index).fillna(value={'Duration': '00:00:00'})
+df1 = pd.DataFrame(solr.get_query('PA', fl='UUID, UID, Date_From, Date_To, Days, STP, Transaction, id, Origin, Terminus'))
 
 df1['ID'] = 'PT'
 for KEY in ['Date_From', 'Date_To']:
@@ -47,12 +46,11 @@ df1 = df1.drop(['Date_From', 'Date_To'], axis=1)
 df1['Actual'] = df1['Days']
 
 def output_schedule(this_schedule):
-    this_schedule['Active'] = this_schedule['Start_Date'].dt.strftime('%Y-%m-%d')  + '.' + this_schedule['End_Date'].dt.strftime('%Y-%m-%d') + '.' + this_schedule['Actual'] + '.' + this_schedule['Op_Days'].astype(str)
+    this_schedule['Active'] = this_schedule['Start_Date'].dt.strftime('%Y-%m-%d')  + '.' + this_schedule['End_Date'].dt.strftime('%Y-%m-%d') + '.' + this_schedule['Actual']
 
     this_schedule['id'] = this_schedule['id'] + '.' + this_schedule.groupby('id').cumcount().apply(str)
     for KEY in ['Start_Date', 'End_Date']:
         this_schedule[KEY] = this_schedule[KEY].dt.strftime('%Y-%m-%dT%H:%M:%SZ')
-    this_schedule = this_schedule.fillna(value={'Origin': '', 'Terminus': ''})
     df1 = this_schedule['Actual'].apply(lambda s: {'{}'.format(str(k)): v for k, v in enumerate(list(s))})
     df2 = pd.DataFrame(df1.to_list(), index=df1.index)
     this_schedule = this_schedule.join(df2)
