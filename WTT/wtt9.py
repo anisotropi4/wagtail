@@ -26,6 +26,7 @@ filename = 'output/HD_001'
 filename = 'output/TR_002'
 filename = 'output/PATH_004'
 filename = 'output/PATH_030'
+filename = 'output/PATH_109'
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Process trains services \
@@ -42,7 +43,8 @@ if DEBUG:
     print(filename)
     pd.set_option('display.max_columns', None)
 
-ISO8601_DATE = datetime(1900, 1, 1)
+POSIXEPOCH = pd.Timestamp('1900-01-01', tz='UTC')
+ZERO = pd.Timedelta(0)
 DAY = pd.offsets.Day()
 MONDAY = pd.offsets.Week(weekday=0)
 
@@ -57,7 +59,7 @@ def wtt_datetime(this_column):
 
 def wtt_time(this_column, format='%H%M%S'):
     this_column = this_column.str.replace('H', '30').str.replace(' ', '00')
-    return pd.to_datetime(this_column, format=format)
+    return pd.to_datetime(this_column, format=format, utc=True)
 
 def blank_columns(this_frame):
     return [n for n in this_frame.select_dtypes(include=['object']).columns if this_frame[n].str.isspace().all() or (this_frame[n] == '').all()]
@@ -220,11 +222,10 @@ def get_wtt(this_df):
     idx_lo = (WTT['ID'] == 'LO')
     WTT.loc[idx_lo, 'Offset'] = WTT.loc[idx_lo, 'Schedule']
     WTT['Offset'] = WTT['Schedule'] - WTT['Offset'].fillna(method='ffill')
-    WTT.loc[WTT['Offset'] < pd.Timedelta(0), 'Offset'] += DAY
-    WTT['Offset'] += ISO8601_DATE
+    WTT.loc[WTT['Offset'] < ZERO, 'Offset'] += DAY
+    WTT['Offset'] += POSIXEPOCH
 
     idx_ps = (WTT['Public Schedule'] != '0000')
-
     WTT.loc[idx_ps, 'Public Schedule'] = wtt_time(WTT.loc[idx_ps, 'Public Schedule'], format='%H%M').dt.strftime('%H:%M')
     WTT.loc[~idx_ps, 'Public Schedule'] = ''
     WTT = WTT.drop('index', axis=1)
@@ -235,9 +236,6 @@ def end_record(records):
     this_frame = pd.DataFrame(data=this_array, columns=['ID'])
     #this_frame['id'] = [uuid1().hex for x in records]
     return this_frame
-
-SOLR_CONN = {}
-SOLR_DATA = {}
 
 def write_json(filename, this_df, key):
     this_df = this_df.fillna('')
@@ -286,11 +284,17 @@ if KEY == 'PATH':
     idx_sa = (df1['ID'] == 'BS') | (df1['ID'] == 'BX') | (df1['ID'] == 'CR')
     SA = df1.loc[idx_sa, ['ID', 'Data', 'UUID', 'id']]
     WTT = get_wtt(df1)
+
     lo_idx = (WTT['ID'] == 'LO')
     lt_idx = (WTT['ID'] == 'LT')
-    df1 = WTT
-    df1['Schedule'] = df1['Schedule'].dt.strftime('%H:%M:%S')
-    df1['Offset'] = df1['Offset'].dt.strftime('%H:%M:%S')
+    WTT['delta'] = WTT['Offset'].diff()
+    WTT.loc[lo_idx | lt_idx, 'delta'] = ZERO
+    idx_delta = WTT['delta'] > pd.Timedelta(hours=23)
+    WTT.loc[idx_delta, 'Offset'] -= DAY
+    WTT = WTT.drop('delta', axis=1)
+    df1 = WTT.copy()
+    for COLUMN in ['Schedule', 'Offset']:
+        df1[COLUMN] = wtt_datetime(df1[COLUMN])
 
 if KEY in ['HD', 'ZZ']:
     df1['seq'] = M
@@ -299,7 +303,7 @@ filename = 'storage/{}_{}.jsonl'.format(KEY, M)
 write_json(filename, df1, KEY)
 OUTPUT = []
 
-if SA.empty:
+if KEY != 'PATH':
     if DEBUG:
         1/0
     sys.exit(0)
@@ -308,14 +312,12 @@ PA = pa_record(SA[SA['ID'] == 'BS']).set_index('UUID')
 df2 = WTT.loc[lo_idx, ['Schedule', 'UUID']].set_index('UUID').rename(columns={'Schedule': 'Origin'})
 PA = PA.join(df2)
 df2 = WTT.loc[lt_idx, ['Schedule', 'Offset', 'UUID']].set_index('UUID').rename(columns={'Schedule': 'Terminus', 'Offset': 'Duration'})
-PA = PA.join(df2)
-
-df2 = WTT.loc[lo_idx, ['Schedule', 'UUID']].set_index('UUID')
-df2 = df2.join(WTT.loc[lt_idx, ['Offset', 'UUID']].set_index('UUID'))
-df3 = ((pd.to_timedelta(df2['Schedule']) + pd.to_timedelta(df2['Offset'])) / DAY).apply(np.ceil).astype(int).astype(str)
-df3.name = 'Op_Days'
-PA = PA.join(df3).reset_index().fillna(value={'Op_Days': '0'}).fillna('')
-PA['Dates'] += '.' + PA['Op_Days']
+PA = PA.join(df2).reset_index()
+PA['Terminus'] = PA['Duration'] - POSIXEPOCH
+PA['Terminus'] += PA['Origin']
+PA = PA.fillna(value={'Origin': POSIXEPOCH, 'Terminus': POSIXEPOCH, 'Duration': POSIXEPOCH}).fillna('')
+for COLUMN in ['Origin', 'Duration', 'Terminus']:
+    PA[COLUMN] = wtt_datetime(PA[COLUMN])
 
 BS = bs_record(SA[SA['ID'] == 'BS'])
 BX = bx_record(SA[SA['ID'] == 'BX'])
@@ -325,4 +327,3 @@ CR = change_en_route(SA[SA['ID'] == 'CR'])
 for (k, df1) in [('PA', PA), ('BS', BS), ('CR', CR)]:
     filename = 'storage/{}_{}.jsonl'.format(k, M)
     write_json(filename, df1, k)
-
