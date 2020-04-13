@@ -74,13 +74,15 @@ def post_solr(data, name='', api='', response_header=False, hostname=SOLRHOST):
     this_data.pop('responseHeader', None)
     return this_data
 
-def raw_query(name, search_str='*:*', sort='id asc', nrows=10, group_fl=None,
-              **rest):
+def raw_query(name, search_str='*:*', sort='id asc', nrows=10,
+              group_fl=None, ngroup=1024, **rest):
     """raw_query: return Solr raw query data for a connection"""
     data = {'q': search_str, 'sort': sort, 'rows': nrows, 'indent': 'off'}
     if group_fl:
-        data = {**data, 'group': 'true', 'group.field': group_fl,
-                'group.limit': 1024}
+        data = {**data,
+                'group': 'true',
+                'group.field': group_fl,
+                'group.limit': ngroup}
     if rest:
         data = {**data, **rest}
     this_response = post_solr(data, name, api='select')
@@ -91,19 +93,26 @@ def get_query(name, search_str='*:*', sort='id asc', limitrows=False, nrows=10, 
     if not ping_name(name):
         raise ValueError('"{}" is not a Solr collection or core'.format(name))
     nrows = nrows if limitrows else get_count(name)
-    this_response = raw_query(name, q=search_str, nrows=nrows, **rest)
+    this_response = raw_query(name,
+                              q=search_str,
+                              sort=sort,
+                              nrows=nrows,
+                              **rest)
     this_data = this_response.pop('response')
     return this_data['docs']
 
-def get_group(name, group_fl, search_str='*:*', sort='id asc', **rest):
+def get_group(name, group_fl, search_str='*:*',
+              ngroup=1024, sort='id asc', **rest):
     """get_group: return Solr query grouped by group_fl data"""
     if not ping_name(name):
         raise ValueError('"{}" is not a Solr collection or core'.format(name))
     nrows = get_count(name)
     this_response = raw_query(name,
                               q=search_str,
+                              sort=sort,
                               nrows=nrows,
                               group_fl=group_fl,
+                              ngroup=ngroup,
                               **rest)
     this_data = this_response.pop('grouped')[group_fl]['groups']
     return {i['groupValue']:
