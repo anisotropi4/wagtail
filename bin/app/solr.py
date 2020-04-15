@@ -229,7 +229,7 @@ def set_schema(name, solr_mode='collections', *v):
 
 def wait_for_success(function, error, *rest):
     """wait_for_success: poll for successful completion of function"""
-    for i in range(64):
+    for i in range(128):
         try:
             if function(*rest):
                 return True
