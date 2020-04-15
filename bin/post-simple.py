@@ -46,25 +46,31 @@ if __name__ == '__main__':
     PARSER.add_argument('--rename-id', dest='rename', action='store_true',
                         default=False,
                         help='rename id field to core.id if it exists')
+    PARSER.add_argument('--set-schema', dest='nopost', action='store_true',
+                        default=False,
+                        help='do not post data')
+
 
     ARGS = PARSER.parse_args()
     FILENAMES = ARGS.inputfiles
     CORE = ARGS.core
     RENAMEID = ARGS.rename
     SEQ = ARGS.seq
+    NOPOST = ARGS.nopost
     if DEBUG:
         raise RuntimeError(('ERROR post-simple.py: running command line '
                             'in debug mode'))
 
 def get_nested_columns(this_df):
     return set(c for c in df1.columns
-            if np.any([is_list_like(i) for i in this_df[c]]))
+        if np.any([is_list_like(i) for i in this_df[c]]))
 
-def get_new_schema(this_core, this_df):
+def get_new_schema(this_df):
     multi_columns = get_nested_columns(this_df)
-    fields = [{'name': key, 'type': DEFAULTTYPE, 'multiValued': True}
-         if key in multi_columns else {'name': key, 'type': DEFAULTTYPE}
-         for key in this_df.columns if key != 'id']
+    fields = [{'name': key,
+               'type': DEFAULTTYPE,
+               'multiValued': (key in multi_columns)}
+              for key in this_df.columns if key != 'id']
     return fields
 
 def get_df(filename, chunksize=None, dtype=None):
@@ -81,7 +87,7 @@ def post_chunk(this_df):
     this_header = this_response.pop('responseHeader')
     print({**{'filename': filename}, **this_header})
     if this_header.get('status') != 0:
-        solr.HTTPError(this_response, this_schema)
+        solr.HTTPError(this_response)
     return this_header.get('status') == 0
 
 def post_data(this_df, m=1048576):
@@ -106,10 +112,10 @@ def flatten_df(this_df):
 def schema_v(key, this_schema):
     return {i['name']: i[key] for i in this_schema}
 
-def get_update(name, this_schema):
-    fields = schema_v('type', solr.get_schema(name, SOLRMODE))
-    update = schema_v('type', this_schema)
-    return [i for i in this_schema if i['name'] not in fields or i['type'] != update[i['name']]]
+def get_update(name, new_schema):
+    fields = schema_v('multiValued', solr.get_schema(name, SOLRMODE))
+    return [i for i in new_schema if i['name'] not in fields
+            or (not fields[i['name']] and fields[i['name']] != i['multiValued'])]
 
 def wait_for_schema(*v):
     return not get_update(*v)
@@ -173,8 +179,7 @@ for filename in FILENAMES:
         df1 = rename_id(df1)
     if RENAMEID or 'id' not in keys:
         df1['id'] = set_id(df1)
-    this_schema = solr.get_schema(this_core, SOLRMODE)
-    new_schema = get_new_schema(this_core, df1)
+    new_schema = get_new_schema(df1)
     update = get_update(this_core, new_schema)
     print({SOLRMODE: this_core, 'file': filestub, 'fields': update})
     if update:
@@ -184,8 +189,7 @@ for filename in FILENAMES:
             print('183: {}'.format(filename))
             pass
     solr.wait_for_success(wait_for_schema, ConnectionError, this_core, new_schema)
-    if update:
-        this_schema = solr.get_schema(this_core, SOLRMODE)
-    m = 32768 if SOLRMODE == 'collections' else 1048576
-    if not post_data(df1, m):
-        raise TimeoutError('unable to post: {}'.format(filename))
+    if not NOPOST:
+        m = 32768 if SOLRMODE == 'collections' else 1048576
+        if not post_data(df1, m):
+            raise TimeoutError('unable to post: {}'.format(filename))
