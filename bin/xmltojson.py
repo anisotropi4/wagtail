@@ -50,6 +50,14 @@ if inputfile:
 else:
     fin = sys.stdin
 
+def clean_dict(d):
+    """https://stackoverflow.com/questions/27973988/python-how-to-remove-all-empty-fields-in-a-nested-dict"""
+    if not isinstance(d, (dict, list)):
+        return d
+    if isinstance(d, list):
+        return [v for v in (clean_dict(v) for v in d) if v]
+    return {k: v for k, v in ((k, clean_dict(v)) for k, v in d.items()) if v}
+
 def write_file(path, item):
     if not item:
         return True
@@ -57,8 +65,8 @@ def write_file(path, item):
         return True
     if not isinstance(item, list):
         item = [item]
-    if tostdout:
-        print('\n'.join([json.dumps(i) for i in item]))
+    if tostdout:        
+        print('\n'.join([json.dumps(i) for i in clean_dict(item)]))
         return True
     rtag = 'output'
     if path:
@@ -70,7 +78,7 @@ def write_file(path, item):
     else:
         fout = open(outputfile, 'w')
         filetags[rtag] = True
-    fout.write('\n'.join([json.dumps(i) for i in item]))
+    fout.write('\n'.join([json.dumps(i) for i in clean_dict(item)]))
     fout.write('\n')
     return True
 
