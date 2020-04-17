@@ -32,8 +32,8 @@ services:
       - solr
 
 networks:
-  nptn_solr:
+  solr:
     ipam:
       driver: default
       config:
-        - subnet: "172.26.0.0/24"
+        - subnet: "172.26.0.0/28"

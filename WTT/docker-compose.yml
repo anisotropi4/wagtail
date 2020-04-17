@@ -32,8 +32,8 @@ services:
       - solr
 
 networks:
-  wtt_solr:
+  solr:
     ipam:
       driver: default
       config:
-        - subnet: "172.26.2.0/24"
+        - subnet: "172.29.0.0/28"
