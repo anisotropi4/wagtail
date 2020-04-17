@@ -1,11 +1,9 @@
 #!/bin/sh 
 
-export SOLRHOST=localhost
-export SOLRHOST=joseph
 export PYTHONUNBUFFERED=1
 export PATH=${PATH}:../bin
 
-for DIRECTORY in data schedule storage app
+for DIRECTORY in app data output storage
 do
     if [ ! -d ${DIRECTORY} ]; then
         mkdir ${DIRECTORY}
