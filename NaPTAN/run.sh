@@ -1,6 +1,5 @@
 #!/bin/sh 
 
-export SOLRHOST=localhost
 export PYTHONUNBUFFERED=1
 export PATH=${PATH}:../bin
 
@@ -55,11 +54,12 @@ do
     COUNT=$(count-documents.py ${ID} | jq -r ".${ID}")
     echo ${ID} ${COUNT}
     if [ x${COUNT} = x"missing" ]; then
+        echo Set Schema ${FILE} to Solr ${ID}
+        < ${FILE} parallel -j 1 --blocksize 8M --files --pipe -l 4096 cat | parallel "post-types.py {} --core ${ID} --seq {#} --rename-id --set-schema; rm {}"
         COUNT=0
     fi
     if [ x${COUNT} = "x0" ]; then
         echo Posting ${FILE} to Solr ${ID}
-        < ${FILE} parallel -j 1 --blocksize 32M --files --pipe -l 65536 cat | parallel "post-types.py {} --core ${ID} --seq {#} --rename-id; rm {}; sleep 1"
+        < ${FILE} parallel -j 1 --blocksize 8M --files --pipe -l 4096 cat | parallel "post-types.py {} --core ${ID} --seq {#} --rename-id; rm {}; sleep 1"
     fi
 done
-
