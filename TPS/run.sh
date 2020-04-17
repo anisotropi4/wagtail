@@ -1,6 +1,5 @@
 #!/bin/sh
 
-export SOLRHOST=localhost
 export PYTHONUNBUFFERED=1
 export PATH=${PATH}:../bin
 
@@ -34,7 +33,6 @@ if [ ! -d data ]; then
     echo Process XML_p.xml
     mkdir data
     xmltojson.py --path data --depth 1 --encoding cp437 XML_p.xml
-    #xml2json.py --path run --depth 1 --encoding cp437 XML_p.xml
 fi
 
 for FILE in data/*.jsonl
@@ -47,7 +45,7 @@ do
     fi
     if [ x${COUNT} = "x0" ]; then
         echo Posting ${FILE} to Solr ${ID}
-        < ${FILE} parallel -j 1 --blocksize 32M --files --pipe -l 65536 cat | parallel "post-simple.py {} --core ${ID} --seq {#} --rename-id; rm {}; sleep 1"
+        < ${FILE} parallel -j 1 --blocksize 32M --files --pipe -l 65536 cat | parallel "post-types.py {} --core ${ID} --seq {#} --rename-id; rm {}; sleep 1"
     fi
 done
 
