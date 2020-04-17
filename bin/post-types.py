@@ -8,7 +8,7 @@ import argparse
 import os.path as path
 from os import getcwd
 import pandas as pd
-from pandas.api.types import is_list_like, is_integer_dtype
+from pandas.api.types import is_list_like
 import numpy as np
 from app.flatten_keys import flatten
 import warnings
@@ -23,10 +23,12 @@ SEQ = None
 DEFAULTTYPE = 'text_general'
 DEFAULTFIELDS = None
 CWD = getcwd()
+NOPOST = False
+SETDT = False
 DEBUG = False
 
 try:
-    from debug import FILENAMES, RENAMEID, CWD
+    from debug import FILENAMES, RENAMEID, CWD, CORE, SETDT
     DEBUG = True
 except ModuleNotFoundError:
     pass
@@ -46,19 +48,29 @@ if __name__ == '__main__':
     PARSER.add_argument('--rename-id', dest='rename', action='store_true',
                         default=False,
                         help='rename id field to core.id if it exists')
+    PARSER.add_argument('--set-schema', dest='nopost', action='store_true',
+                        default=False,
+                        help='do not post data')
+    PARSER.add_argument('--set-solrdt', dest='setdt', action='store_true',
+                        default=False,
+                        help='convert timestamps to solrdt format')
 
     ARGS = PARSER.parse_args()
     FILENAMES = ARGS.inputfiles
     CORE = ARGS.core
     RENAMEID = ARGS.rename
     SEQ = ARGS.seq
+    NOPOST = ARGS.nopost
+    SETDT = ARGS.setdt
     if DEBUG:
         raise RuntimeError(('ERROR post-types.py: running command line '
                             'in debug mode'))
 
+def is_any_lists(this_series):
+    return np.any([is_list_like(i) for i in this_series])
+
 def get_nested_columns(this_df):
-    return set(c for c in df1.columns
-            if np.any([is_list_like(i) for i in this_df[c]]))
+    return set(c for c in df1.columns if is_any_lists(this_df[c]))
 
 def get_seriestype(this_series, this_type):
     try:
@@ -68,9 +80,10 @@ def get_seriestype(this_series, this_type):
         return None
 
 def is_zerospcpadded(this_series):
-    if is_integer_dtype(this_series):
+    try:
+        n = set(this_series.str.len())
+    except AttributeError:
         return False
-    n = set(this_series.str.len())
     if len(n) > 1:
         return False
     if n.pop() < 2:
@@ -78,28 +91,78 @@ def is_zerospcpadded(this_series):
     r = this_series.str[0]
     return ((r == '0') | (r == ' ')).any()
 
+def is_anychar(this_series, c):
+    return (this_series.str.find(c) > 0).any()
+
+def is_allchar(this_series, c):
+    return (this_series.str.find(c) > 0).all()
+
 def is_solrdt(this_series):
+    if is_any_lists(this_series):
+        return False
+    if not this_series.str.endswith('Z').all():
+        return False
+    if (this_series.str.len() != 20).all():
+        return False
     try:
         pd.to_datetime(this_series, format='%Y-%m-%dT%H:%M:%SZ')
         return True
     except ValueError:
         return False
 
+def get_dt(this_series):
+    if is_any_lists(this_series):
+        return None
+    try:
+        this_dates = pd.to_datetime(this_series, 'raise')
+        if this_dates.notna().all():
+            return this_dates.dt.strftime('%Y-%m-%dT%H:%M:%SZ')
+    except ValueError:
+        pass
+    return None
+
+def is_point(this_series):
+    if not is_allchar(this_series, ','):
+        return False
+    try:        
+        this_df = this_series.str.split(',', expand=True)
+        if this_df.shape[1] != 2:
+            return False
+        this_df.apply(pd.to_numeric)
+        return True
+    except ValueError:
+        return False
+
 def get_fieldtypes(this_df):
-    lookup_types = {np.datetime64: 'pdate',
-                    int: 'pint',
+    lookup_types = {int: 'pint',
                     float: 'pdouble',
-                    object: 'string'}
+                    np.datetime64: 'pdate',
+                    object: DEFAULTTYPE}
     field_types = {c: DEFAULTTYPE for c in this_df.columns}
     for c in this_df.columns:
         for t, v in lookup_types.items():
-            if get_seriestype(this_df[c], t):
+            if t == np.datetime64:
+                if SETDT:
+                    this_series = get_dt(this_df[c])
+                    if not this_series is None:
+                        this_df[c] = this_series
+                        field_types[c] = v
+                    break
+                if is_solrdt(this_df[c]):
+                    field_types[c] = v
+                    break
+                continue
+            if get_seriestype(this_df[c], t):                
                 if t == int and is_zerospcpadded(this_df[c]):
                     field_types[c] = 'string'
                     break
-                if t == np.datetime64 and not is_solrdt(this_df[c]):
-                    field_types[c] = 'string'
-                    break
+                if t == object:
+                    if is_point(this_df[c]):
+                        field_types[c] = 'point'
+                        break
+                    if not is_anychar(this_df[c], ' '):
+                        field_types[c] = 'string'
+                        break
                 field_types[c] = v
                 break
     return field_types
@@ -107,11 +170,10 @@ def get_fieldtypes(this_df):
 def get_new_schema(this_core, this_df):
     multi_columns = get_nested_columns(this_df)
     field_types = get_fieldtypes(this_df)    
-    fields = [{'name': key, 'type': DEFAULTTYPE, 'multiValued': True}
-         if key in multi_columns else {'name': key,
-                                       'docValues': True,
-                                       'type': field_types[key]}
-         for key in this_df.columns if key != 'id']
+    fields = [{'name': key,
+               'type': field_types[key],
+               'multiValued': (key in multi_columns)}
+               for key in this_df.columns if key != 'id']
     return fields
 
 def get_df(filename, chunksize=None, dtype=None):
@@ -128,7 +190,7 @@ def post_chunk(this_df):
     this_header = this_response.pop('responseHeader')
     print({**{'filename': filename}, **this_header})
     if this_header.get('status') != 0:
-        solr.HTTPError(this_response, this_schema)
+        solr.HTTPError(this_response)
     return this_header.get('status') == 0
 
 def post_data(this_df, m=1048576):
@@ -154,9 +216,9 @@ def schema_v(key, this_schema):
     return {i['name']: i[key] for i in this_schema}
 
 def get_update(name, this_schema):
-    fields = schema_v('type', solr.get_schema(name, SOLRMODE))
-    update = schema_v('type', this_schema)
-    return [i for i in this_schema if i['name'] not in fields or i['type'] != update[i['name']]]
+    fields = schema_v('multiValued', solr.get_schema(name, SOLRMODE))
+    return [i for i in new_schema if i['name'] not in fields
+            or (not fields[i['name']] and fields[i['name']] != i['multiValued'])]
 
 def wait_for_schema(*v):
     return not get_update(*v)
@@ -220,8 +282,7 @@ for filename in FILENAMES:
         df1 = rename_id(df1)
     if RENAMEID or 'id' not in keys:
         df1['id'] = set_id(df1)
-    df1 = df1.fillna('')
-    this_schema = solr.get_schema(this_core, SOLRMODE)
+    df1 = df1.fillna('', downcast=object)
     new_schema = get_new_schema(this_core, df1)
     update = get_update(this_core, new_schema)
     print({SOLRMODE: this_core, 'file': filestub, 'fields': update})
@@ -232,8 +293,7 @@ for filename in FILENAMES:
             print('183: {}'.format(filename))
             pass
     solr.wait_for_success(wait_for_schema, ConnectionError, this_core, new_schema)
-    if update:
-        this_schema = solr.get_schema(this_core, SOLRMODE)
-    m = 32768 if SOLRMODE == 'collections' else 1048576
-    if not post_data(df1, m):
-        raise TimeoutError('unable to post: {}'.format(filename))
+    if not NOPOST:
+        m = 32768 if SOLRMODE == 'collections' else 1048576
+        if not post_data(df1, m):
+            raise TimeoutError('unable to post: {}'.format(filename))
