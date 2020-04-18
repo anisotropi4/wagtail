@@ -105,7 +105,7 @@ def is_solrdt(this_series):
     except ValueError:
         return False
 
-def is_point(this_series):
+def is_location(this_series):
     if not is_allchar(this_series, ','):
         return False
     try:        
@@ -135,8 +135,8 @@ def get_fieldtypes(this_df):
                     field_types[c] = 'string'
                     break
                 if t == object:
-                    if is_point(this_df[c]):
-                        field_types[c] = 'point'
+                    if is_location(this_df[c]):
+                        field_types[c] = 'location'
                         break
                     if not is_anychar(this_df[c], ' '):
                         field_types[c] = 'string'
@@ -146,10 +146,12 @@ def get_fieldtypes(this_df):
     return field_types
 
 def get_new_schema(this_core, this_df):
+    dv_lookup = set({'string', 'point', 'location'})
     multi_columns = get_nested_columns(this_df)
     field_types = get_fieldtypes(this_df)    
     fields = [{'name': key,
                'type': field_types[key],
+               'docValues': True if field_types[key] in dv_lookup else False,
                'multiValued': (key in multi_columns)}
                for key in this_df.columns if key != 'id']
     return fields
@@ -191,7 +193,7 @@ def flatten_df(this_df):
     return this_df
 
 def schema_v(key, this_schema):
-    return {i['name']: i[key] for i in this_schema}
+    return {i['name']: i[key] if key in i else {i['name']: False} for i in this_schema}
 
 def get_update(name, this_schema):
     fields = schema_v('multiValued', solr.get_schema(name, SOLRMODE))
