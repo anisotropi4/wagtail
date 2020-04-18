@@ -24,11 +24,10 @@ DEFAULTTYPE = 'text_general'
 DEFAULTFIELDS = None
 CWD = getcwd()
 NOPOST = False
-SETDT = False
 DEBUG = False
 
 try:
-    from debug import FILENAMES, RENAMEID, CWD, CORE, SETDT
+    from debug import FILENAMES, RENAMEID, CWD, CORE
     DEBUG = True
 except ModuleNotFoundError:
     pass
@@ -51,9 +50,6 @@ if __name__ == '__main__':
     PARSER.add_argument('--set-schema', dest='nopost', action='store_true',
                         default=False,
                         help='do not post data')
-    PARSER.add_argument('--set-solrdt', dest='setdt', action='store_true',
-                        default=False,
-                        help='convert timestamps to solrdt format')
 
     ARGS = PARSER.parse_args()
     FILENAMES = ARGS.inputfiles
@@ -61,7 +57,6 @@ if __name__ == '__main__':
     RENAMEID = ARGS.rename
     SEQ = ARGS.seq
     NOPOST = ARGS.nopost
-    SETDT = ARGS.setdt
     if DEBUG:
         raise RuntimeError(('ERROR post-types.py: running command line '
                             'in debug mode'))
@@ -110,17 +105,6 @@ def is_solrdt(this_series):
     except ValueError:
         return False
 
-def get_dt(this_series):
-    if is_any_lists(this_series):
-        return None
-    try:
-        this_dates = pd.to_datetime(this_series, 'raise')
-        if this_dates.notna().all():
-            return this_dates.dt.strftime('%Y-%m-%dT%H:%M:%SZ')
-    except ValueError:
-        pass
-    return None
-
 def is_point(this_series):
     if not is_allchar(this_series, ','):
         return False
@@ -142,12 +126,6 @@ def get_fieldtypes(this_df):
     for c in this_df.columns:
         for t, v in lookup_types.items():
             if t == np.datetime64:
-                if SETDT:
-                    this_series = get_dt(this_df[c])
-                    if not this_series is None:
-                        this_df[c] = this_series
-                        field_types[c] = v
-                    break
                 if is_solrdt(this_df[c]):
                     field_types[c] = v
                     break
