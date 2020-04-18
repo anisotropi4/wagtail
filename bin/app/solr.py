@@ -37,8 +37,7 @@ def post_api(data, name='', api='', api_type='collections', hostname=SOLRHOST):
 
 def delete_api(name='', api='', this_type='collections', hostname=SOLRHOST):
     """delete_api: delete method with v2 Solr api"""
-    this_url = 'http://{}:8983/api/{}/{}/{}'\
-               .format(hostname, this_type, name, api)
+    this_url = 'http://{}:8983/api/{}/{}/{}'.format(hostname, this_type, name, api)
     this_url = this_url.rstrip('/')
     this_request = requests.delete(this_url)
     this_request.raise_for_status()
@@ -192,10 +191,23 @@ def get_schema(name, solr_mode='collections', all_fields=False):
         return this_data['fields']
     return [i for i in this_data['fields'] if usr_dtype(i['name']) and not i.get('required')]
 
+def get_fullschema(name, solr_mode='collections', all_fields=False):
+    """get_schema: return dict for Solr schema for excluding required and unstored fields"""
+    try:
+        this_error = None
+        this_fields = get_api(name, 'schema/fields', solr_mode)
+        this_copyfields = get_api(name, 'schema/copyfields', solr_mode)
+    except HTTPError as error:
+        this_error = error
+    if isinstance(this_error, HTTPError):
+        raise ValueError('"{}" is not a Solr collection or core'.format(name))
+    if all_fields:
+        return this_data['fields']
+    return {'fields': [i for i in this_fields['fields'] if usr_dtype(i['name']) and not i.get('required')], **this_copyfields}
+
 
 def solr_field(name=None, type='string', multiValued=False, stored=True, docValues=False):
-    """solr_field: convert python dict structure to Solr field structure
-    """
+    """solr_field: convert python dict structure to Solr field structure"""
     if not name:
         raise TypeError('solar() missing 1 required positional \
         argument: "name"')
@@ -266,8 +278,13 @@ def create_collection(name, shards=1, replication=1):
 
 def delete_schema(name):
     """remove_schema: remove field definitions for Solr schema `name`"""
-    fields = [{'name': i['name']} for i in get_schema(name)]
+    this_schema = get_fullschema(name)
+    fields = [{'name': i['name']} for i in this_schema['fields']]
+    copyfields = this_schema['copyFields']
     data = {'delete-field': fields}
+    for i in copyfields:
+        data = {'delete-copy-field': i}
+        post_solr(json.dumps(data), name, api='schema')
     return post_solr(json.dumps(data), name, api='schema')
 
 def delete_collection(name, drop_schema=True):
