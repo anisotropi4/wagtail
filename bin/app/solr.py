@@ -157,6 +157,14 @@ def post_data(data, name):
                      api='update/json/docs?commit=true',
                      response_header=True)
 
+def update_data(data, name):
+    """post_data_api: post data using v1 Solr API"""
+    update_data = [{k: v if k == 'id' else {'set': v} for k, v in i.items()} for i in data]
+    return post_solr(json.dumps(update_data),
+                     name,
+                     api='update/json?commit=true',
+                     response_header=True)
+
 def get_names():
     """get_names: return a set of Solr collection or core names"""
     try:
@@ -176,7 +184,8 @@ def get_collections():
 
 def usr_dtype(this_str):
     """usr_dtype: test for system `dtypes`"""
-    return this_str.rstrip('_').lstrip('_') == this_str
+    excluded = {'_root_', '_version_', '_text_', '_nest_path_'}
+    return not this_str in excluded
 
 def get_schema(name, solr_mode='collections', all_fields=False):
     """get_schema: return dict for Solr schema for excluding required and unstored fields"""
