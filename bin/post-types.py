@@ -67,12 +67,12 @@ def is_any_lists(this_series):
 def get_nested_columns(this_df):
     return set(c for c in df1.columns if is_any_lists(this_df[c]))
 
-def get_seriestype(this_series, this_type):
+def get_seriestype(this_series):
     try:
-        if not this_series.astype(this_type).empty:
-            return this_type
+        return pd.to_numeric(this_series[this_series != '']).dtype
     except (ValueError, TypeError):
-        return None
+        pass
+    return np.dtype('object')
 
 def is_zerospcpadded(this_series):
     try:
@@ -85,6 +85,13 @@ def is_zerospcpadded(this_series):
         return False
     r = this_series.str[0]
     return ((r == '0') | (r == ' ')).any()
+
+def is_sparse(this_series):
+    if this_series.str.len().max() > 3:
+        return False
+    n = this_series.shape[0]
+    m = np.sum(this_series.str.count('\d+') > 0)
+    return n > 2 * m
 
 def is_anychar(this_series, c):
     return (this_series.str.find(c) > 0).any()
@@ -108,47 +115,43 @@ def is_solrdt(this_series):
 def is_location(this_series):
     if not is_allchar(this_series, ','):
         return False
-    try:        
-        this_df = this_series.str.split(',', expand=True)
-        if this_df.shape[1] != 2:
+    try:
+        this_df = this_series.str.replace('-0', '0').str.split(r'[.,]', expand=True)
+        if this_df.shape[1] != 4:
             return False
-        this_df.apply(pd.to_numeric)
+        this_df.astype(int)
         return True
     except ValueError:
         return False
 
 def get_fieldtypes(this_df):
-    lookup_types = {int: 'pint',
-                    float: 'pdouble',
-                    np.datetime64: 'pdate',
-                    object: DEFAULTTYPE}
     field_types = {c: DEFAULTTYPE for c in this_df.columns}
     for c in this_df.columns:
-        for t, v in lookup_types.items():
-            if t == np.datetime64:
-                if is_solrdt(this_df[c]):
-                    field_types[c] = v
-                    break
-                continue
-            if get_seriestype(this_df[c], t):                
-                if t == int and is_zerospcpadded(this_df[c]):
-                    field_types[c] = 'string'
-                    break
-                if t == object:
-                    if is_location(this_df[c]):
-                        field_types[c] = 'location'
-                        break
-                    if not is_anychar(this_df[c], ' '):
-                        field_types[c] = 'string'
-                        break
-                field_types[c] = v
-                break
+        if is_zerospcpadded(this_df[c]) or is_sparse(this_df[c]):
+            field_types[c] = 'string'
+            continue
+        this_type = get_seriestype(this_df[c])
+        if this_type is np.dtype('float'):
+            field_types[c] = 'pdouble'
+            continue
+        if this_type is np.dtype('int'):
+            field_types[c] = 'pint'
+            continue
+        if is_location(this_df[c]):
+            field_types[c] = 'location'
+            continue
+        if is_solrdt(this_df[c]):
+            field_types[c] = 'pdate'
+            continue
+        if not is_anychar(this_df[c], ' '):
+            field_types[c] = 'string'
+            continue
     return field_types
 
 def get_new_schema(this_core, this_df):
     dv_lookup = set({'string', 'point', 'location'})
     multi_columns = get_nested_columns(this_df)
-    field_types = get_fieldtypes(this_df)    
+    field_types = get_fieldtypes(this_df)
     fields = [{'name': key,
                'type': field_types[key],
                'docValues': True if field_types[key] in dv_lookup else False,
