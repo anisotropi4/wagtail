@@ -65,7 +65,7 @@ def write_file(path, item):
         return True
     if not isinstance(item, list):
         item = [item]
-    if tostdout:        
+    if tostdout:
         print('\n'.join([json.dumps(i) for i in clean_dict(item)]))
         return True
     rtag = 'output'
@@ -92,7 +92,7 @@ def write_xml(this_data):
     key = list(root['_wrapper']).pop()
     write_file([(key, None)], root['_wrapper'][key])
 
-tagmatch = re.compile(r'>\s*<')        
+tagmatch = re.compile(r'>\s*<')
 def split_line(line):
     return re.sub(tagmatch, '>\n<', line.rstrip('\n')).split('\n')
 
