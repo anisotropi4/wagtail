@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-post-all.py: parse a JSONL file to create, update and post the
-associated core schema and data to a Solr instance
+post-types.py: parse a JSONL file to create, update and post the
+associated core/collection schema and data to a Solr instance
 """
 import re
 import argparse
@@ -87,11 +87,14 @@ def is_zerospcpadded(this_series):
     return ((r == '0') | (r == ' ')).any()
 
 def is_sparse(this_series):
-    if this_series.str.len().max() > 3:
+    try:
+        if this_series.astype(str).str.len().max() > 3:
+            return False
+        n = this_series.shape[0]
+        m = np.sum(this_series.str.count('\d+') > 0)
+        return n > 2 * m
+    except:
         return False
-    n = this_series.shape[0]
-    m = np.sum(this_series.str.count('\d+') > 0)
-    return n > 2 * m
 
 def is_anychar(this_series, c):
     return (this_series.str.find(c) > 0).any()
@@ -149,7 +152,7 @@ def get_fieldtypes(this_df):
     return field_types
 
 def get_new_schema(this_core, this_df):
-    dv_lookup = set({'string', 'point', 'location'})
+    dv_lookup = set({'string', 'point', 'location', 'pdate', 'pint', 'pdouble'})
     multi_columns = get_nested_columns(this_df)
     field_types = get_fieldtypes(this_df)
     fields = [{'name': key,
@@ -250,12 +253,11 @@ for filename in FILENAMES:
     this_core = re.split(r'[\._-]', filestub).pop(0)
     if CORE:
         this_core = CORE
-    SOLRMODE = solr.get_solrmode()
     if this_core not in solr.get_names():
         create_collection(this_core)
     if not solr.wait_for_success(solr.check_missing_status, \
                                  (ConnectionError, solr.HTTPError), \
-                                 this_core, SOLRMODE):
+                                 this_core):
         raise TimeoutError('ERROR: "add-unknown-fields-to-the-schema" \
         flag is not set for {}'.format(this_core))
     df1 = get_df(filename, dtype=object)
