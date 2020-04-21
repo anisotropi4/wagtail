@@ -64,7 +64,7 @@ for filename in FILENAMES:
     if CORE:
         this_collection = CORE
     if DELETE and ping_name(this_collection, solr_mode='collections'):
-        delete_collection(this_collection)        
+        delete_collection(this_collection)
     if ping_name(this_collection, solr_mode='collections'):
         sys.exit(0)
     if not ping_name(this_collection, solr_mode='collections'):
