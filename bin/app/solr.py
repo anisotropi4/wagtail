@@ -240,11 +240,13 @@ def set_schema(name, solr_mode='collections', *v):
         schema_fields = {i['name']: i['type'] for i in get_schema(name, solr_mode)}
     except ValueError:
         pass
-    data = {'add-field': [], 'replace-field': []}
+    data = {'add-field': [], 'replace-field': [], 'add-copy-field': []}
     for field in fields:
         if field['name'] in schema_fields:
             data['replace-field'].append(solr_field(**field))
             continue
+        if field['type'] in ['string', 'text_general']:
+            data['add-copy-field'].append({'source': field['name'], 'dest': '_text_'})
         data['add-field'].append(solr_field(**field))
     return post_solr(json.dumps(data), name, api='schema')
 
