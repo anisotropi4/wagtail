@@ -4,13 +4,8 @@ create-collection.py: create a Solr collection instance
 """
 
 import json
-import re
 import argparse
 import sys
-import os.path as path
-import pandas as pd
-import pandas.api.types as pd_types
-import numpy as np
 
 from app.solr import create_collection, delete_collection, ping_name, wait_for_success
 
@@ -34,39 +29,35 @@ BITMAP = True
 SEQ = None
 
 if __name__ == '__main__':
-    PARSER = argparse.ArgumentParser(description='Create Solr collection based on filename')
-    PARSER.add_argument('inputfiles', nargs='+',
-                        help='name of JSONL files to parse')
-    PARSER.add_argument('--core', dest='core', type=str, default=None,
-                        help='By default Solr core default name is derived \
-                        from the filename')
+    PARSER = argparse.ArgumentParser(description='Create Solr collection')
+    PARSER.add_argument('collection', nargs=1,
+                        help='name of collection to create')
     PARSER.add_argument('--delete', dest='delete', action='store_true',
                         default=False,
-                        help='Delete Solr core')
+                        help='delete existing Solr collection first')
+    PARSER.add_argument('--no-autoschema', dest='noschema', action='store_true',
+                        default=False,
+                        help='Don\'t set "autoCreateFields" for schema')
+
     ARGS = PARSER.parse_args()
-    FILENAMES = ARGS.inputfiles
-    CORE = ARGS.core
+    CORE = ARGS.collection.pop()
     DELETE = ARGS.delete
+    SCHEMA = not ARGS.noschema
     DEBUG = False
 
 if DEBUG:
     pd.set_option('display.max_columns', None)
-    FILENAMES = [FILENAME]
     #BITMAP = True
     #NONUMERIC = True
     #SEQ = 4
     RENAMEID = True
     CORE = 'QX'
 
-for filename in FILENAMES:
-    filestub = path.basename(filename)
-    this_collection = re.split(r'[\._-]', filestub).pop(0)
-    if CORE:
-        this_collection = CORE
-    if DELETE and ping_name(this_collection, solr_mode='collections'):
-        delete_collection(this_collection)
-    if ping_name(this_collection, solr_mode='collections'):
-        sys.exit(0)
-    if not ping_name(this_collection, solr_mode='collections'):
-        create_collection(this_collection)
-    #this_schema = get_schema(this_collection)
+if DELETE and ping_name(CORE, solr_mode='collections'):
+    delete_collection(CORE)
+
+if ping_name(CORE, solr_mode='collections'):
+    sys.exit(0)
+
+if not ping_name(CORE, solr_mode='collections'):
+    create_collection(CORE, set_schema=SCHEMA)
