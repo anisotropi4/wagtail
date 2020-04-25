@@ -269,7 +269,7 @@ def check_missing_status(name, solr_mode='collections', status='false'):
                 for i in this_data
                 if i['name'] == 'add-unknown-fields-to-the-schema')
 
-def create_collection(name, shards=1, replication=1):
+def create_collection(name, shards=1, replication=1, set_schema=True):
     """create_collection: create Solr collection"""
 #def create_collection(name, hostname=SOLRHOST, shards=3, replication=2):
     print('create collection {}'.format(name))
@@ -280,10 +280,23 @@ def create_collection(name, shards=1, replication=1):
     this_response = post_api(json.dumps(data))
     print(this_response)
     print('created collection {}'.format(name))
-    data = {'set-user-property': {'update.autoCreateFields': 'false',
+    if set_schema:
+        data = {'set-user-property': {'update.autoCreateFields': 'false',
                                   'waitForFinalState': 'true'}}
-    post_api(json.dumps(data), name, 'config')
-    print('autoCreateFields {}'.format(name))
+        post_api(json.dumps(data), name, 'config')
+        print('autoCreateFields {} true'.format(name))
+
+def get_configs():
+    return get_api('configs', '', api_type='cluster')
+
+def delete_config(name):
+    if name == '_default_':
+        raise ValueError('Error: cannot delete "_default_" config')
+    these_configs = get_api('configs', '', api_type='cluster').pop('configSets', None)
+    if not these_configs: return
+    for this_name in [name, '{}.AUTOCREATED'.format(name)]:
+        if this_name in these_configs:
+            delete_api('configs', this_name, 'cluster')
 
 def delete_schema(name):
     """remove_schema: remove field definitions for Solr schema `name`"""
@@ -296,7 +309,7 @@ def delete_schema(name):
         post_solr(json.dumps(data), name, api='schema')
     return post_solr(json.dumps(data), name, api='schema')
 
-def delete_collection(name, drop_schema=True):
+def delete_collection(name, drop_schema=True, drop_config=True):
     """delete_collection: delete collection and optionally drop schema"""
     print('delete collection {}'.format(name))
     if drop_schema and get_schema(name):
@@ -305,6 +318,9 @@ def delete_collection(name, drop_schema=True):
         print('deleted schema {}'.format(name))
     delete_api(name)
     wait_for_success(lambda v: not ping_name(v), ValueError, name)
+    if drop_config:
+        delete_config(name)
+        print('deleted config {}'.format(name))
     print('deleted collection {}'.format(name))
 
 def ping_name(name, solr_mode='cores'):
