@@ -62,7 +62,7 @@ if __name__ == '__main__':
                             'in debug mode'))
 
 def get_nested_columns(this_df):
-    return set(c for c in df1.columns
+    return set(c for c in this_df.columns
         if np.any([is_list_like(i) for i in this_df[c]]))
 
 def get_new_schema(this_df):
@@ -149,14 +149,14 @@ def rename_id(this_df):
     this_id = this_core + '.id'
     if this_id in keys:
         raise ValueError('ERROR: cannot rename field as {} already exists'.format(this_id))
-    return df1.rename({'id': this_id}, axis=1)
+    return this_df.rename({'id': this_id}, axis=1)
 
 def set_id(this_df):
-    df1['id'] = df1.index
+    this_df['id'] = this_df.index
     this_seq = ''
     if SEQ:
         this_seq = str(SEQ).zfill(4) + '.'
-    return this_seq + df1['id'].apply(lambda v: str(1 + v).zfill(8))
+    return this_seq + this_df['id'].apply(lambda v: str(1 + v).zfill(8))
 
 for filename in FILENAMES:
     filestub = path.basename(filename)
