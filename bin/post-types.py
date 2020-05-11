@@ -65,7 +65,7 @@ def is_any_lists(this_series):
     return np.any([is_list_like(i) for i in this_series])
 
 def get_nested_columns(this_df):
-    return set(c for c in df1.columns if is_any_lists(this_df[c]))
+    return set(c for c in this_df.columns if is_any_lists(this_df[c]))
 
 def get_seriestype(this_series):
     try:
@@ -138,7 +138,7 @@ def get_fieldtypes(this_df):
             field_types[c] = 'pdouble'
             continue
         if this_type is np.dtype('int'):
-            field_types[c] = 'pint'
+            field_types[c] = 'plong'
             continue
         if is_location(this_df[c]):
             field_types[c] = 'location'
@@ -152,7 +152,7 @@ def get_fieldtypes(this_df):
     return field_types
 
 def get_new_schema(this_core, this_df):
-    dv_lookup = set({'string', 'point', 'location', 'pdate', 'pint', 'pdouble'})
+    dv_lookup = set({'string', 'point', 'location', 'pdate', 'plong', 'pdouble'})
     multi_columns = get_nested_columns(this_df)
     field_types = get_fieldtypes(this_df)
     fields = [{'name': key,
@@ -238,14 +238,14 @@ def rename_id(this_df):
     this_id = this_core + '.id'
     if this_id in keys:
         raise ValueError('ERROR: cannot rename field as {} already exists'.format(this_id))
-    return df1.rename({'id': this_id}, axis=1)
+    return this_df.rename({'id': this_id}, axis=1)
 
 def set_id(this_df):
-    df1['id'] = df1.index
+    this_df['id'] = this_df.index
     this_seq = ''
     if SEQ:
         this_seq = str(SEQ).zfill(4) + '.'
-    return this_seq + df1['id'].apply(lambda v: str(1 + v).zfill(8))
+    return this_seq + this_df['id'].apply(lambda v: str(1 + v).zfill(8))
 
 for filename in FILENAMES:
     filestub = path.basename(filename)
@@ -253,6 +253,7 @@ for filename in FILENAMES:
     this_core = re.split(r'[\._-]', filestub).pop(0)
     if CORE:
         this_core = CORE
+    SOLRMODE = solr.get_solrmode()
     if this_core not in solr.get_names():
         create_collection(this_core)
     if not solr.wait_for_success(solr.check_missing_status, \
