@@ -74,7 +74,7 @@ def post_solr(data, name='', api='', response_header=False, hostname=SOLRHOST):
     return this_data
 
 def raw_query(name, search_str='*:*', sort='id asc', nrows=10,
-              group_fl=None, ngroup=1024, **rest):
+              facet_fl=None, group_fl=None, ngroup=1024, **rest):
     """raw_query: return Solr raw query data for a connection"""
     data = {'q': search_str, 'sort': sort, 'rows': nrows, 'indent': 'off'}
     if group_fl:
@@ -82,6 +82,12 @@ def raw_query(name, search_str='*:*', sort='id asc', nrows=10,
                 'group': 'true',
                 'group.field': group_fl,
                 'group.limit': ngroup}
+    if facet_fl:
+        data = {**data,
+                'facet': 'true',
+                'facet.field': facet_fl,
+                'facet.limit': ngroup,
+                'rows': nrows}
     if rest:
         data = {**data, **rest}
     this_response = post_solr(data, name, api='select')
@@ -118,6 +124,20 @@ def get_group(name, group_fl, search_str='*:*',
             [{k: v for k, v in j.items() if k != group_fl}
              for j in i['doclist']['docs']]
             for i in this_data}
+
+def get_facet(name, facet_fl, search_str='*:*', nrows=0, ngroup=512, **rest):
+    """get_facet: return Solr facet grouped by facet_fl field"""
+    if not ping_name(name):
+        raise ValueError('"{}" is not a Solr collection or core'.format(name))
+    ngroup = get_count(name)
+    this_response = raw_query(name,
+                              q=search_str,
+                              nrows=nrows,
+                              ngroup=ngroup,
+                              facet_fl=facet_fl,
+                              **rest)
+    this_data = this_response.pop('facet_counts')['facet_fields'][facet_fl]
+    return this_data
 
 def get_count(name, search_str='*:*', **rest):
     """get_count: return Solr document count for name"""
@@ -240,13 +260,11 @@ def set_schema(name, solr_mode='collections', *v):
         schema_fields = {i['name']: i['type'] for i in get_schema(name, solr_mode)}
     except ValueError:
         pass
-    data = {'add-field': [], 'replace-field': [], 'add-copy-field': []}
+    data = {'add-field': [], 'replace-field': []}
     for field in fields:
         if field['name'] in schema_fields:
             data['replace-field'].append(solr_field(**field))
             continue
-        if field['type'] in ['string', 'text_general']:
-            data['add-copy-field'].append({'source': field['name'], 'dest': '_text_'})
         data['add-field'].append(solr_field(**field))
     return post_solr(json.dumps(data), name, api='schema')
 
