@@ -25,8 +25,6 @@ parser.add_argument('inputfile', type=str, nargs='?', help='name of file to pars
 
 args = parser.parse_args()
 
-args = parser.parse_args()
-
 output_path = args.output_path
 depth = args.depth
 encoding = args.encoding
