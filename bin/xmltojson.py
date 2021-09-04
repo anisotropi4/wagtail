@@ -6,7 +6,7 @@ import json
 import argparse
 from xmltodict import parse
 from lxml import etree
-this_parser = etree.XMLParser(remove_blank_text=True)
+
 
 arg_parser = argparse.ArgumentParser(description='Reformats an xml-filename so that sub-trees below a given tag depth are on a single line')
 
