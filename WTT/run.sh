@@ -19,8 +19,8 @@ URL="https://networkrail.opendata.opentraintimes.com/mirror/schedule/cif/"
 echo Download CIF files
 echo Get file list
 if [ ! -s full-file-list.txt ]; then
-    curl -s -L -G  ${URL} | \
-    htmltojson.py --stdout --depth 3 | jq -cr '.tbody?[]? | .[].td[] | select(.a?.title?) | .a.title' > full-file-list.txt  
+    curl -s -L -G  ${URL} | ./html2json.py | \
+        jq -r '.[]."File Name"' > full-file-list.txt
 fi
 
 LINE=$(fgrep -n _full.gz full-file-list.txt | tail -1)
