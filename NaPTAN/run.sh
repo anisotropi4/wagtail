@@ -55,7 +55,8 @@ do
     echo ${ID} ${COUNT}
     if [ x${COUNT} = x"missing" ]; then
         echo Set Schema ${FILE} to Solr ${ID}
-        < ${FILE} parallel -j 1 --blocksize 8M --files --pipe -l 4096 cat | parallel "post-types.py {} --core ${ID} --seq {#} --rename-id --set-schema; rm {}"
+        < ${FILE} parallel -j 1 --blocksize 8M --files --pipe -l 4096 cat | parallel "post-types.py {} --core ${ID} --seq {#} --rename-id --set-schema; rm {}; sleep 1"
+        #< ${FILE} parallel -j 1 --blocksize 8M --files --pipe -l 4096 cat | parallel "post-types.py {} --core ${ID} --seq {#} --rename-id --set-schema; sleep 1"
         COUNT=0
     fi
     if [ x${COUNT} = "x0" ]; then
