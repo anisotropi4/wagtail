@@ -1,4 +1,4 @@
-#!/bin/sh -x
+#!/bin/sh
 
 export PYTHONUNBUFFERED=1
 export PATH=${PATH}:../bin
@@ -22,7 +22,7 @@ if [ ! -f file-list.txt ]; then
         jq -cr '.td? | select(.[1] | tonumber > 1024)? | .[0].a.value' > file-list.txt
 fi
 
-if [ ! -f CORPUSExtract.json ]; then
+if [ ! -s CORPUSExtract.json ]; then
     FILENAME=$(tail -1 file-list.txt)
     echo Download and uncompress ${FILENAME} to CORPUSExtract.json.gz
     curl ${URL}/${FILENAME} -o CORPUSExtract.json.gz
@@ -41,6 +41,7 @@ do
     COUNT=$(count-documents.py ${ID} | jq -r ".${ID}")
     echo ${ID} ${COUNT}
     if [ x${COUNT} = x"missing" ]; then
+        < ${FILE} parallel -j 1 --blocksize 8M --files --pipe -l 4096 cat | parallel "post-types.py {} --core ${ID} --seq {#} --rename-id --set-schema; rm {}; sleep 1"
         COUNT=0
     fi
     if [ x${COUNT} = "x0" ]; then
