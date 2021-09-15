@@ -235,7 +235,7 @@ def get_fullschema(name, solr_mode='collections', all_fields=False):
     return {'fields': [i for i in this_fields['fields'] if usr_dtype(i['name']) and not i.get('required')], **this_copyfields}
 
 
-def solr_field(name=None, type='string', multiValued=False, stored=True, docValues=False):
+def solr_field2(name=None, type='string', multiValued=False, stored=True, docValues=False):
     """solr_field: convert python dict structure to Solr field structure"""
     if not name:
         raise TypeError('solar() missing 1 required positional \
@@ -246,7 +246,15 @@ def solr_field(name=None, type='string', multiValued=False, stored=True, docValu
             'stored': lookup_bool[stored],
             'docValues': lookup_bool[docValues]}
 
-def set_schema(name, solr_mode='collections', *v):
+def solr_field(name=None, type='string'):
+    """solr_field: convert python dict structure to Solr field structure"""
+    if not name:
+        raise TypeError('solar() missing 1 required positional \
+        argument: "name"')
+    lookup_bool = {True: 'true', False: 'false'}
+    return {'name': name, 'type': type}
+
+def set_schema(name, solr_mode='collections', debug=False, *v):
     """set_schema: add or replace the Solr schema for name from list of dict
     `v` containing `name` and `type` keys"""
     fields = []
@@ -266,6 +274,8 @@ def set_schema(name, solr_mode='collections', *v):
             data['replace-field'].append(solr_field(**field))
             continue
         data['add-field'].append(solr_field(**field))
+    if debug:
+        print('DEBUG', data)
     return post_solr(json.dumps(data), name, api='schema')
 
 def wait_for_success(function, error, *rest):
