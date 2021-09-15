@@ -5,6 +5,7 @@ import os
 import json
 import argparse
 import pandas as pd
+from filelock import FileLock
 
 #import numpy as np
 #import json
@@ -12,7 +13,7 @@ import pandas as pd
 #from datetime import date
 #from dateutil.parser import parse
 
-from app.solr import get_query, get_group, get_schema, set_schema, update_data, wait_for_success, get_solrmode
+from app.solr import get_query, get_group, get_schema, set_schema, update_data, wait_for_success, get_solrmode, HTTPError
 
 CORE = None
 SOLRMODE = get_solrmode()
@@ -37,9 +38,10 @@ def schema_v(key, this_schema):
     return {i['name']: i[key] if key in i else {i['name']: False} for i in this_schema}
 
 def get_update(name, this_schema):
-    fields = schema_v('multiValued', get_schema(name, SOLRMODE))
+    tv_lookup = set({'strings', 'points', 'pdates', 'plongs', 'pdoubles'})
+    fields = schema_v('type', get_schema(name, SOLRMODE))
     return [i for i in this_schema if i['name'] not in fields
-            or (not fields[i['name']] and fields[i['name']] != i['multiValued'])]
+            or (i['type'] in tv_lookup and fields[i['name']] not in tv_lookup)]
 
 def get_cnames(these_columns):
     n = 0
@@ -62,7 +64,6 @@ def clean_json(this_df):
     return [{k: v for k, v in m.items() if isinstance(v, list) or v != ''} for m in this_df]
 
 def update_chunk(this_df):
-    from app.solr import HTTPError
     data = clean_json(this_df.to_dict(orient='records'))
     this_response = update_data(data, CORE)
     this_header = this_response.pop('responseHeader')
@@ -80,34 +81,48 @@ def update_dataframe(this_df, m=1048576):
     this_header = wait_for_success(update_chunk, ConnectionError, this_df.iloc[i:])
     return this_header
 
+print({'collection': CORE, 'field': '_location_'})
 SCHEMA = get_schema(CORE, SOLRMODE)
 FIELDS = 'id, {}'.format(', '.join([i['name']
                                     for i in SCHEMA
-                                    if not i['multiValued']
                                     for j in ['longitude', 'latitude']
-                                    if i['name'].lower().rfind(j) > 0]))
+                                if i['name'].lower().rfind(j) > 0]))
 DATA = pd.DataFrame(get_query(CORE, '*:*', fl=FIELDS), dtype=object)
-COLUMNS = get_cnames(DATA.columns)
-DATA = DATA.rename(columns=COLUMNS)
 
-for i in list(COLUMNS.values()):
-    idx1 = DATA[i].notna()
-    DATA.loc[idx1, i] = DATA.loc[idx1, i].apply(trim_f)
+COLUMNS = get_cnames(DATA.columns)
+
+DATA = DATA.rename(columns=COLUMNS)
+for c in list(COLUMNS.values()):
+    idx1 = DATA[c].notna()
+    try:
+        DATA.loc[idx1, c] = DATA.loc[idx1, c].apply(trim_f)
+    except TypeError:
+        DATA = DATA.drop(c, axis=1)
+        pass
+
 
 DATA['_location_'] = DATA['latitude'] + ',' + DATA['longitude']
 DATA = DATA.drop(['longitude', 'latitude'], axis=1)
 
 for n in range(1, len(DATA.columns) // 2):
     i = str(n).zfill(2)
-    DATA['_location_{}_'.format(i)] = DATA['latitude_{}'.format(i)] + ',' + DATA['longitude_{}'.format(i)]
+    idx1 = DATA['latitude_{}'.format(i)].notna()
+    DATA['_location_{}_'.format(i)] = DATA.loc[idx1, 'latitude_{}'.format(i)] + ',' + DATA.loc[idx1, 'longitude_{}'.format(i)]
     DATA = DATA.drop(['longitude_{}'.format(i), 'latitude_{}'.format(i)], axis=1)
 
 DATA = DATA.fillna('')
+SCHEMA = [{'name': '{}'.format(i), 'type': 'location'} for i in DATA.columns if i != 'id']
+LOCK = FileLock('/tmp/{}-lock'.format(CORE))
 
-SCHEMA = [{'name': '{}'.format(i), 'type': 'location', 'docValues': True, 'multiValued': False} for i in DATA.columns if i != 'id']
-UPDATE = get_update(CORE, SCHEMA)
-if UPDATE:
-     set_schema(CORE, SOLRMODE, UPDATE)
+with LOCK.acquire(timeout=32):
+    UPDATE = get_update(CORE, SCHEMA)
+    if UPDATE:
+        try:
+            set_schema(CORE, SOLRMODE, False, UPDATE)
+        except HTTPError as error:
+            print('183: {}'.format(filename))
+            pass
+        wait_for_success(wait_for_schema, ConnectionError, CORE, SCHEMA)
 
 m = 32768
 if not update_dataframe(DATA, m):
