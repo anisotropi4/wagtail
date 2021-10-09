@@ -77,15 +77,11 @@ def get_seriestype(this_series):
     return np.dtype('object')
 
 def is_zerospcpadded(this_series):
-    s = this_series[this_series != '']
+    s = this_series.explode().drop_duplicates()
+    s = s[(s != '') & (s != '0.0') & (s != '0')]
     try:
         n = set(s.str.len())
     except AttributeError:
-        return False
-    if len(n) > 1:
-        return False
-    
-    if n.pop() < 2:
         return False
     r = s.str[0]
     return ((r == '0') | (r == ' ')).any()
@@ -210,10 +206,10 @@ def schema_v(key, this_schema):
 
 def get_update(name, this_schema):
     tv_lookup = set({'strings', 'points', 'pdates', 'plongs', 'pdoubles'})
+    nv_lookup = set({'plong', 'pdouble'})
     fields = schema_v('type', solr.get_schema(name, SOLRMODE))
     return [i for i in this_schema if i['name'] not in fields
             or (i['type'] in tv_lookup and fields[i['name']] not in tv_lookup)]
-
 
 def wait_for_schema(*v):
     return not get_update(*v)
