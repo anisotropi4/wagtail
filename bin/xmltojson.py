@@ -23,6 +23,10 @@ arg_parser.add_argument('--path', dest='output_path', type=str,
 arg_parser.add_argument('--encoding', dest='xmlencoding', default='utf-8',
                     help='optional file encoding parameter')
 
+arg_parser.add_argument('--debug', dest='debug', action='store_true',
+                        default=False,
+                    help='dump tag-names during procesing')
+
 arg_parser.add_argument('inputfile', type=str, nargs='?', help='name of file to parse')
 
 args = arg_parser.parse_args()
@@ -30,6 +34,7 @@ args = arg_parser.parse_args()
 output_path = args.output_path
 depth = args.depth
 xmlencoding = args.xmlencoding
+debug = args.debug
 
 if output_path != '':
     output_path = output_path + '/'
@@ -46,7 +51,7 @@ if depth == 0:
 inputfile = args.inputfile
 
 if inputfile:
-    fin = open(inputfile, 'r', encoding=xmlencoding)
+    fin = open(inputfile, 'rb', buffering=4096)
 else:
     fin = sys.stdin
 
@@ -71,7 +76,8 @@ def write_file(path, item):
     rtag = 'output'
     if path:
         (rtag, _) = path[-1]
-    #print(rtag)
+    if debug:
+        print(rtag)
     outputfile = '{}{}.jsonl'.format(output_path, rtag)
     if rtag in filetags:
         fout = open(outputfile, 'a')
@@ -93,7 +99,9 @@ def write_xml(this_data):
     write_file([(key, None)], root['_wrapper'][key])
 
 tagmatch = re.compile(r'>\s*<')
+
 def split_line(line):
+    line = line.replace('\r', ' ')
     return re.sub(tagmatch, '>\n<', line.rstrip('\n')).split('\n')
 
 i = 0
@@ -126,7 +134,7 @@ this_parser = etree.XMLParser(target=_target())
 i = 0
 fbuffer = []
 otag = None
-for line in (j for i in fin for j in split_line(i)):
+for line in (j for i in fin for j in split_line(i.decode(xmlencoding))):
     this_parser.feed(line.encode())
     r = this_parser.target.event
     if r:
