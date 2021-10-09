@@ -71,7 +71,7 @@ def get_nested_columns(this_df):
 
 def get_seriestype(this_series):
     try:
-        return pd.to_numeric(this_series[this_series != '']).dtype
+        return pd.to_numeric(this_series[this_series != ''].explode()).dtype
     except (ValueError, TypeError):
         pass
     return np.dtype('object')
@@ -206,10 +206,11 @@ def schema_v(key, this_schema):
 
 def get_update(name, this_schema):
     tv_lookup = set({'strings', 'points', 'pdates', 'plongs', 'pdoubles'})
-    nv_lookup = set({'plong', 'pdouble'})
+    sv_lookup = set({'string', 'strings'})
     fields = schema_v('type', solr.get_schema(name, SOLRMODE))
     return [i for i in this_schema if i['name'] not in fields
-            or (i['type'] in tv_lookup and fields[i['name']] not in tv_lookup)]
+            or (i['type'] in tv_lookup and fields[i['name']] not in tv_lookup)
+            or (i['type'] in sv_lookup and fields[i['name']] not in sv_lookup)]
 
 def wait_for_schema(*v):
     return not get_update(*v)
