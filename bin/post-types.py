@@ -157,12 +157,11 @@ def get_type(this_type, multi_column):
         return this_type + 's'
     return this_type
 
-def get_new_schema(this_core, this_df):
+def get_df_schema(this_df):
     multi_columns = get_nested_columns(this_df)
     field_types = get_fieldtypes(this_df)
-    fields = [{'name': key,
-               'type': get_type(field_types[key], key in multi_columns)}
-               for key in this_df.columns if key != 'id']
+    fields = {key : get_type(field_types[key], key in multi_columns)
+               for key in this_df.columns if key != 'id'}
     return fields
 
 def get_df(filename, chunksize=None, dtype=None):
@@ -205,12 +204,17 @@ def schema_v(key, this_schema):
     return {i['name']: i[key] if key in i else {i['name']: False} for i in this_schema}
 
 def get_update(name, this_schema):
+    fields = schema_v('type', solr.get_schema(name, SOLRMODE))
+    r = {k: this_schema[k] for k in set(this_schema) - set(fields)}
     tv_lookup = set({'strings', 'points', 'pdates', 'plongs', 'pdoubles'})
     sv_lookup = set({'string', 'strings'})
-    fields = schema_v('type', solr.get_schema(name, SOLRMODE))
-    return [i for i in this_schema if i['name'] not in fields
-            or (i['type'] in tv_lookup and fields[i['name']] not in tv_lookup)
-            or (i['type'] in sv_lookup and fields[i['name']] not in sv_lookup)]
+    s = {k: v for k, v in this_schema.items() if k in fields and fields[k] != v}
+    t = {k: v for k, v in s.items()
+         if (v in tv_lookup and fields[k] not in tv_lookup)
+         or (v in sv_lookup and fields[k] not in sv_lookup)}
+    u = {k: 'strings' for k, v in t.items() if s[k] in sv_lookup and fields[k] in tv_lookup}
+    r = {**r, **t, **u}
+    return [{'name': k, 'type': v} for k, v in r.items()]
 
 def wait_for_schema(*v):
     return not get_update(*v)
@@ -278,20 +282,24 @@ for filename in FILENAMES:
         df1['id'] = set_id(df1)
     df1 = df1.fillna('', downcast=object)
     if NOPOST:
-        new_schema = get_new_schema(this_core, df1)
+        this_schema = get_df_schema(df1)
         with lock.acquire(timeout=32):
-            update = get_update(this_core, new_schema)
-            print({SOLRMODE: this_core, 'file': filestub, 'fields': update})
+            update = get_update(this_core, this_schema)
             if update:
-                print({'updating': update})
+                print({SOLRMODE: this_core, 'file': filestub, 'fields': update})
                 try:
                     solr.set_schema(this_core, SOLRMODE, False, update)
                 except solr.HTTPError as error:
                     print('183: {}'.format(filename))
                     pass
-                solr.wait_for_success(wait_for_schema, ConnectionError, this_core, new_schema)
-    if not NOPOST:
+                solr.wait_for_success(wait_for_schema, ConnectionError, this_core, this_schema)
+    else:
         print({SOLRMODE: this_core, 'file': filestub, 'fields': 'post'})
+        this_schema = get_df_schema(df1)
+        update = get_update(this_core, this_schema)
+        if update:
+            print(update)
         m = 32768 if SOLRMODE == 'collections' else 1048576
         if not post_data(df1, m):
+            print(df1)
             raise TimeoutError('unable to post: {}'.format(filename))
