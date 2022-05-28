@@ -104,14 +104,14 @@ for c in list(COLUMNS.values()):
 DATA['_location_'] = DATA['latitude'] + ',' + DATA['longitude']
 DATA = DATA.drop(['longitude', 'latitude'], axis=1)
 
-for n in range(1, len(DATA.columns) // 2):
-    i = str(n).zfill(2)
-    idx1 = DATA['latitude_{}'.format(i)].notna()
-    DATA['_location_{}_'.format(i)] = DATA.loc[idx1, 'latitude_{}'.format(i)] + ',' + DATA.loc[idx1, 'longitude_{}'.format(i)]
-    DATA = DATA.drop(['longitude_{}'.format(i), 'latitude_{}'.format(i)], axis=1)
+for c in [i for i in DATA.columns if 'latitude_' in i]:
+    i = c[-2:]
+    idx1 = DATA[c].notna()
+    DATA[f'_location_{i}_'] = DATA.loc[idx1, f'latitude_{i}'] + ',' + DATA.loc[idx1, f'longitude_{i}']
+    DATA = DATA.drop([f'longitude_{i}', f'latitude_{i}'], axis=1)
 
 DATA = DATA.fillna('')
-SCHEMA = [{'name': '{}'.format(i), 'type': 'location'} for i in DATA.columns if i != 'id']
+SCHEMA = [{'name': f'{i}', 'type': 'location'} for i in DATA.columns if i != 'id']
 LOCK = FileLock('/tmp/{}-lock'.format(CORE))
 
 with LOCK.acquire(timeout=32):
