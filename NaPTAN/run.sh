@@ -15,11 +15,13 @@ if [ ! -s app/solr.py ]; then
 fi
 
 
+echo Download NaPTAN file
 URL='https://multiple-la-generator-dot-dft-add-naptan-prod.ew.r.appspot.com/v1/access-nodes?dataFormat=xml'
 if [ ! -s NaPTAN.xml ]; then
     curl -o NaPTAN.xml -X 'GET' ${URL} -H 'accept: */*'
 fi
 
+echo Convert NaPTAN XML to jsonl
 if [ ! -s output/StopArea.jsonl ]; then
     xmltojson.py NaPTAN.xml --path output --depth 2
 fi
