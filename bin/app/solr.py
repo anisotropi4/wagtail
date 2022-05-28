@@ -11,8 +11,7 @@ SOLRHOST = os.environ.get('SOLRHOST', 'localhost')
 
 def get_api(name='', api='', api_type='collections', hostname=SOLRHOST):
     """get_api: get method for v2 Solr api"""
-    this_url = 'http://{}:8983/api/{}/{}/{}'\
-               .format(hostname, api_type, name, api)
+    this_url = f'http://{hostname}:8983/api/{api_type}/{name}/{api}'
     this_url = this_url.rstrip('/')
     this_request = requests.get(this_url)
     this_request.raise_for_status()
@@ -24,9 +23,9 @@ def get_api(name='', api='', api_type='collections', hostname=SOLRHOST):
 
 def post_api(data, name='', api='', api_type='collections', hostname=SOLRHOST):
     """post_api: post method with v2 Solr api"""
-    this_url = 'http://{}:8983/api/{}/{}/{}'\
-               .format(hostname, api_type, name, api)
+    this_url = f'http://{hostname}:8983/api/{api_type}/{name}/{api}'
     this_url = this_url.rstrip('/')
+    print(this_url, data)
     this_request = requests.post(this_url, data)
     this_request.raise_for_status()
     this_data = this_request.json()
@@ -37,7 +36,7 @@ def post_api(data, name='', api='', api_type='collections', hostname=SOLRHOST):
 
 def delete_api(name='', api='', this_type='collections', hostname=SOLRHOST):
     """delete_api: delete method with v2 Solr api"""
-    this_url = 'http://{}:8983/api/{}/{}/{}'.format(hostname, this_type, name, api)
+    this_url = f'http://{hostname}:8983/api/{this_type}/{name}/{api}'
     this_url = this_url.rstrip('/')
     this_request = requests.delete(this_url)
     this_request.raise_for_status()
@@ -49,7 +48,7 @@ def delete_api(name='', api='', this_type='collections', hostname=SOLRHOST):
 
 def get_solr(name='', api='', response_header=False, hostname=SOLRHOST):
     """get_solr: get method with v1 Solr api"""
-    this_url = 'http://{}:8983/solr/{}/{}'.format(hostname, name, api)
+    this_url = f'http://{hostname}:8983/solr/{name}/{api}'
     this_url = this_url.rstrip('/')
     this_request = requests.get(this_url)
     this_data = this_request.json()
@@ -62,7 +61,7 @@ def get_solr(name='', api='', response_header=False, hostname=SOLRHOST):
 
 def post_solr(data, name='', api='', response_header=False, hostname=SOLRHOST):
     """post_solr: post data method with v1 Solr` api"""
-    this_url = 'http://{}:8983/solr/{}/{}'.format(hostname, name, api)
+    this_url = f'http://{hostname}:8983/solr/{name}/{api}'
     this_url = this_url.rstrip('/')
     this_request = requests.post(this_url, data)
     this_data = this_request.json()
@@ -96,7 +95,7 @@ def raw_query(name, search_str='*:*', sort='id asc', nrows=10,
 def get_query(name, search_str='*:*', sort='id asc', limitrows=False, nrows=10, **rest):
     """get_query: return Solr query data for `solr` connection"""
     if not ping_name(name):
-        raise ValueError('"{}" is not a Solr collection or core'.format(name))
+        raise ValueError(f'"{name}" is not a Solr collection or core')
     nrows = nrows if limitrows else get_count(name)
     this_response = raw_query(name,
                               q=search_str,
@@ -110,7 +109,7 @@ def get_group(name, group_fl, search_str='*:*',
               ngroup=1024, sort='id asc', **rest):
     """get_group: return Solr query grouped by group_fl data"""
     if not ping_name(name):
-        raise ValueError('"{}" is not a Solr collection or core'.format(name))
+        raise ValueError(f'"{name}" is not a Solr collection or core')
     nrows = get_count(name)
     this_response = raw_query(name,
                               q=search_str,
@@ -128,7 +127,7 @@ def get_group(name, group_fl, search_str='*:*',
 def get_facet(name, facet_fl, search_str='*:*', nrows=0, ngroup=512, **rest):
     """get_facet: return Solr facet grouped by facet_fl field"""
     if not ping_name(name):
-        raise ValueError('"{}" is not a Solr collection or core'.format(name))
+        raise ValueError(f'"{name}" is not a Solr collection or core')
     ngroup = get_count(name)
     this_response = raw_query(name,
                               q=search_str,
@@ -142,7 +141,7 @@ def get_facet(name, facet_fl, search_str='*:*', nrows=0, ngroup=512, **rest):
 def get_count(name, search_str='*:*', **rest):
     """get_count: return Solr document count for name"""
     if not ping_name(name):
-        raise ValueError('"{}" is not a Solr collection or core'.format(name))
+        raise ValueError(f'"{name}" is not a Solr collection or core')
     this_response = raw_query(name, q=search_str, start=0, nrows=0, **rest)
     this_data = this_response.pop('response')
     return this_data.pop('numFound')
@@ -167,8 +166,7 @@ def type_error_solr(this_response, this_schema):
         this_schema = {i['name']: i['type'] for i in this_schema}
         (_, this_field, _, this_data, *_) = error_text.split('\'')
         this_type = this_schema.get(this_field, None)
-        raise ValueError('Error: cannot post data "{}" to field "{}" type "{}"'\
-                         .format(this_data, this_field, this_type))
+        raise ValueError(f'Error: cannot post data "{this_data}" to field "{this_field}" type "{this_type}"')
 
 def post_data(data, name):
     """post_data_api: post data using v1 Solr API"""
@@ -215,7 +213,7 @@ def get_schema(name, solr_mode='collections', all_fields=False):
     except HTTPError as error:
         this_error = error
     if isinstance(this_error, HTTPError):
-        raise ValueError('"{}" is not a Solr collection or core'.format(name))
+        raise ValueError(f'"{name}" is not a Solr collection or core')
     if all_fields:
         return this_data['fields']
     return [i for i in this_data['fields'] if usr_dtype(i['name']) and not i.get('required')]
@@ -229,7 +227,7 @@ def get_fullschema(name, solr_mode='collections', all_fields=False):
     except HTTPError as error:
         this_error = error
     if isinstance(this_error, HTTPError):
-        raise ValueError('"{}" is not a Solr collection or core'.format(name))
+        raise ValueError(f'"{name}" is not a Solr collection or core')
     if all_fields:
         return this_data['fields']
     return {'fields': [i for i in this_fields['fields'] if usr_dtype(i['name']) and not i.get('required')], **this_copyfields}
@@ -302,19 +300,19 @@ def check_missing_status(name, solr_mode='collections', status='false'):
 def create_collection(name, shards=1, replication=1, set_schema=True):
     """create_collection: create Solr collection"""
 #def create_collection(name, hostname=SOLRHOST, shards=3, replication=2):
-    print('create collection {}'.format(name))
+    print(f'create collection {name}')
     data = {'create': {'name': name,
                        'numShards': shards,
                        'replicationFactor':replication,
                        'waitForFinalState': 'true'}}
     this_response = post_api(json.dumps(data))
     print(this_response)
-    print('created collection {}'.format(name))
+    print(f'created collection {name}')
     if set_schema:
         data = {'set-user-property': {'update.autoCreateFields': 'false',
                                   'waitForFinalState': 'true'}}
         post_api(json.dumps(data), name, 'config')
-        print('autoCreateFields {} true'.format(name))
+        print(f'autoCreateFields {name} true')
 
 def get_configs():
     return get_api('configs', '', api_type='cluster')
@@ -324,7 +322,7 @@ def delete_config(name):
         raise ValueError('Error: cannot delete "_default_" config')
     these_configs = get_api('configs', '', api_type='cluster').pop('configSets', None)
     if not these_configs: return
-    for this_name in [name, '{}.AUTOCREATED'.format(name)]:
+    for this_name in [name, f'{name}.AUTOCREATED']:
         if this_name in these_configs:
             delete_api('configs', this_name, 'cluster')
 
@@ -341,17 +339,17 @@ def delete_schema(name):
 
 def delete_collection(name, drop_schema=True, drop_config=True):
     """delete_collection: delete collection and optionally drop schema"""
-    print('delete collection {}'.format(name))
+    print(f'delete collection {name}')
     if drop_schema and get_schema(name):
-        print('delete schema {}'.format(name))
+        print(f'delete schema {name}')
         delete_schema(name)
-        print('deleted schema {}'.format(name))
+        print(f'deleted schema {name}')
     delete_api(name)
     wait_for_success(lambda v: not ping_name(v), ValueError, name)
     if drop_config:
         delete_config(name)
-        print('deleted config {}'.format(name))
-    print('deleted collection {}'.format(name))
+        print(f'deleted config {name}')
+    print(f'deleted collection {name}')
 
 def ping_name(name, solr_mode='cores'):
     """ping_name: check if collection or core exists"""
