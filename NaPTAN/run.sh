@@ -14,17 +14,14 @@ if [ ! -s app/solr.py ]; then
     ln ../bin/app/solr.py app/solr.py
 fi
 
-URL="http://naptan.app.dft.gov.uk/Datarequest/naptan.ashx"
-if [ ! -s naptan.zip ]; then
-    wget -O naptan.zip ${URL}
-fi
 
-if [ ! -s Naptan.xml ]; then
-    unzip naptan.zip
+URL='https://multiple-la-generator-dot-dft-add-naptan-prod.ew.r.appspot.com/v1/access-nodes?dataFormat=xml'
+if [ ! -s NaPTAN.xml ]; then
+    curl -o NaPTAN.xml -X 'GET' ${URL} -H 'accept: */*'
 fi
 
 if [ ! -s output/StopArea.jsonl ]; then
-    xmltojson.py Naptan.xml --path output --depth 2
+    xmltojson.py NaPTAN.xml --path output --depth 2
 fi
 
 echo Check docker cluster is running
@@ -56,7 +53,6 @@ do
     if [ x${COUNT} = x"missing" ]; then
         echo Set Schema ${FILE} to Solr ${ID}
         < ${FILE} parallel -j 1 --blocksize 8M --files --pipe -l 4096 cat | parallel "post-types.py {} --core ${ID} --seq {#} --rename-id --set-schema; rm {}; sleep 1"
-        #< ${FILE} parallel -j 1 --blocksize 8M --files --pipe -l 4096 cat | parallel "post-types.py {} --core ${ID} --seq {#} --rename-id --set-schema; sleep 1"
         COUNT=0
     fi
     if [ x${COUNT} = "x0" ]; then
