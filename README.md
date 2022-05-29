@@ -162,7 +162,7 @@ $ ./run.sh
 ## WTT
 From the `CIF` project directory
 ```console
-$ cd CIF
+$ cd WTT
 $ sh ../bin/create-cluster.sh
 ```
 
