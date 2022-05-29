@@ -1,4 +1,4 @@
-#!/bin/sh 
+#!/bin/bash
 
 export PYTHONUNBUFFERED=1
 export PATH=${PATH}:../bin
@@ -19,7 +19,7 @@ URL="https://networkrail.opendata.opentraintimes.com/mirror/schedule/cif/"
 echo Download CIF files
 echo Get file list
 if [ ! -s full-file-list.txt ]; then
-    curl -s -L -G  ${URL} | ./html2json.py | \
+    curl -k -s -L -G  ${URL} | html2json.py | \
         jq -r '.[]."File Name"' > full-file-list.txt
 fi
 
@@ -34,7 +34,7 @@ do
     echo Process ${FILENAME} CIF file
     if [ ! -s data/${FILENAME} ]; then
         echo Download ${FILENAME} CIF file
-        curl -o data/${FILENAME}.gz ${URL}/${FILENAME}.gz
+        curl -k -o data/${FILENAME}.gz ${URL}/${FILENAME}.gz
         gzip -d data/${FILENAME}.gz
     fi
 done
@@ -87,6 +87,11 @@ do
     COUNT=$(count-documents.py ${ID} | jq -r ".${ID}")
     echo ${ID} ${COUNT}
     if [ x${COUNT} = x"missing" ]; then
+	for FILE in $(ls storage/${ID}_???.jsonl)
+	do
+            echo Set Schema ${FILE} to Solr ${ID}
+	    < ${FILE} parallel -j 1 --blocksize 8M --files --pipe -l 4096 cat | parallel "post-types.py {} --core ${ID} --seq {#} --rename-id --set-schema; rm {}; sleep 1"
+	done
         COUNT=0
     fi
     if [ x${COUNT} = "x0" ]; then
@@ -109,5 +114,6 @@ fi
 
 if [ x${COUNT} = "x0" ]; then
     echo Post ${ID} json files to Solr
+    cat PT-${DATESTRING}-7.jsonl | parallel --block 8M --pipe --cat "post-types.py --core ${ID} --set-schema"
     cat PT-${DATESTRING}-7.jsonl | parallel --block 8M --pipe --cat post-types.py --core ${ID} {}
 fi
